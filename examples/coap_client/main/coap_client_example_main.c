@@ -16,8 +16,8 @@
 
 #include <string.h>
 #include <sys/socket.h>
-#include <netdb.h>
-#include <sys/param.h>
+#include <netdb.h> // struct addrinfo
+#include <sys/param.h> // MIN
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"

@@ -1,0 +1,13 @@
+#pragma once
+
+#define FOREACH_GOLIOTH_STATUS(STATUS) \
+    STATUS(GOLIOTH_OK) \
+    STATUS(GOLIOTH_ERR_DNS_LOOKUP)
+
+#define GENERATE_GOLIOTH_STATUS_ENUM(code) code,
+typedef enum {
+    FOREACH_GOLIOTH_STATUS(GENERATE_GOLIOTH_STATUS_ENUM)
+    NUM_GOLIOTH_STATUS_CODES
+} golioth_status_t;
+
+const char* golioth_status_to_str(golioth_status_t status);
