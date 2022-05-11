@@ -473,6 +473,31 @@ void app_main(void) {
             assert(sent == pdTRUE);
         }
 
+        ESP_LOGI(TAG, "GET \".d/nonexistant\"");
+        {
+            coap_request_msg_t request_msg = {
+                .type = COAP_REQUEST_GET,
+                .get = {
+                    .path = ".d/nonexistant",
+                    .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
+                },
+            };
+            BaseType_t sent = xQueueSend(_client.request_queue, &request_msg, portMAX_DELAY);
+            assert(sent == pdTRUE);
+        }
+
+        ESP_LOGI(TAG, "DELETE \".d/delete_me\"");
+        {
+            coap_request_msg_t request_msg = {
+                .type = COAP_REQUEST_DELETE,
+                .delete = {
+                    .path = ".d/delete_me",
+                },
+            };
+            BaseType_t sent = xQueueSend(_client.request_queue, &request_msg, portMAX_DELAY);
+            assert(sent == pdTRUE);
+        }
+
         uint32_t free_heap = xPortGetFreeHeapSize();
         uint32_t min_free_heap = xPortGetMinimumEverFreeHeapSize();
         ESP_LOGI(TAG, "Free heap = %u bytes, Min ever free heap = %u", free_heap, min_free_heap);
