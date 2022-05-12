@@ -7,6 +7,7 @@
 golioth_status_t golioth_lightdb_observe(golioth_client_t client, const char* path);
 
 // TODO - user provides content type
+// TODO - set_int, set_string, set_json, set_bool, set_float
 golioth_status_t golioth_lightdb_set(
         golioth_client_t client,
         const char* path,

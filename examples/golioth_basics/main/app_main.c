@@ -6,10 +6,7 @@
 #include "protocol_examples_common.h"
 #include "golioth.h"
 
-#define TAG "coap_minimal"
-
-#define EXAMPLE_COAP_PSK_ID "nicks_esp32s3_devkit-id@nicks-first-project"
-#define EXAMPLE_COAP_PSK "8e2b614316c6db46146ebfff44cd649f"
+#define TAG "golioth_basics"
 
 void app_main(void) {
     // Initialization required for connecting to WiFi
@@ -17,13 +14,13 @@ void app_main(void) {
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * $ENV{IDF_PATH}/examples/protocols/README.md for more information about this function.
-     */
+    // Connect to wifi
+    // See $ENV{IDF_PATH}/examples/protocols/README.md for details
     ESP_ERROR_CHECK(example_connect());
 
-    golioth_client_t client = golioth_client_create(EXAMPLE_COAP_PSK_ID, EXAMPLE_COAP_PSK);
+    golioth_client_t client = golioth_client_create(
+            CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID,
+            CONFIG_GOLIOTH_EXAMPLE_COAP_PSK);
     assert(client);
 
     golioth_lightdb_observe(client, ".d/setting");
@@ -43,6 +40,7 @@ void app_main(void) {
 
         golioth_lightdb_delete(client, ".d/delete_me");
 
+        golioth_statistic_print_all();
         uint32_t free_heap = xPortGetFreeHeapSize();
         uint32_t min_free_heap = xPortGetMinimumEverFreeHeapSize();
         ESP_LOGI(TAG, "Free heap = %u bytes, Min ever free heap = %u", free_heap, min_free_heap);

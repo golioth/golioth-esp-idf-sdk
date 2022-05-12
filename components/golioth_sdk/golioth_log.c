@@ -1,6 +1,7 @@
 #include <esp_log.h>
 #include "golioth_coap_client.h"
 #include "golioth_log.h"
+#include "golioth_statistic.h"
 
 #define TAG "golioth_log"
 
@@ -21,6 +22,7 @@ golioth_status_t golioth_log(golioth_client_t client, const char* log_message) {
         ESP_LOGE(TAG, "Payload alloc failure");
         return GOLIOTH_ERR_MEM_ALLOC;
     }
+    golioth_statistic_add(GSTAT_ID_ALLOCATED_BYTES, msg_len);
 
     memcpy(payload, log_message, msg_len);
 

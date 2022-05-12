@@ -8,25 +8,9 @@
 #include <coap3/coap.h>
 #include "golioth_client.h"
 #include "golioth_coap_client.h"
+#include "golioth_statistic.h"
 
 #define TAG "golioth_coap_client"
-
-//
-// Golioth SDK config
-//
-#define CONFIG_GOLIOTH_COAP_HOST_URI "coaps://coap.golioth.io"
-
-// Maximum time, in milliseconds, the coap_task will wait for something
-// to arrive in the request queue.
-#define CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS 1000
-
-// Maximum time, in milliseconds, the coap_task will block while waiting
-// for a response from the server.
-#define CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS 10000
-
-// Maximum number of items the coap_task request queue will hold.
-// If the queue is full, any attempts to queue new messages will fail.
-#define CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_MAX_ITEMS 10
 
 static bool _initialized;
 
@@ -268,6 +252,7 @@ static void golioth_coap_client_task(void *arg) {
                     golioth_coap_put(&request_msg.put, coap_session);
                     assert(request_msg.put.payload);
                     free(request_msg.put.payload);
+                    golioth_statistic_add(GSTAT_ID_FREED_BYTES, request_msg.put.payload_size);
                     break;
                 case GOLIOTH_COAP_REQUEST_DELETE:
                     ESP_LOGD(TAG, "Handle DELETE %s", request_msg.delete.path);
@@ -329,6 +314,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
         // Connect logs from libcoap to the ESP logger
         coap_set_log_handler(coap_log_handler);
         coap_set_log_level(6); // 3: error, 4: warning, 6: info, 7: debug
+
         _initialized = true;
     }
 
@@ -337,6 +323,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
         ESP_LOGE(TAG, "Failed to allocate memory for client");
         goto error;
     }
+    golioth_statistic_add(GSTAT_ID_ALLOCATED_BYTES, sizeof(golioth_coap_client_t));
 
     new_client->psk_id = psk_id;
     new_client->psk_id_len = strlen(psk_id);
@@ -406,4 +393,5 @@ void golioth_client_destroy(golioth_client_t client) {
         vTaskDelete(c->coap_task_handle);
     }
     free(c);
+    golioth_statistic_add(GSTAT_ID_FREED_BYTES, sizeof(golioth_coap_client_t));
 }

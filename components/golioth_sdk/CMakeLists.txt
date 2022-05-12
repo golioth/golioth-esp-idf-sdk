@@ -10,5 +10,5 @@ idf_component_register(
         "golioth_coap_client.c"
         "golioth_log.c"
         "golioth_lightdb.c"
+        "golioth_statistic.c"
 )
-target_compile_definitions(${COMPONENT_LIB} PUBLIC "-DLOG_LOCAL_LEVEL=ESP_LOG_DEBUG")

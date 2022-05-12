@@ -1,6 +1,7 @@
 #include <esp_log.h>
 #include "golioth_coap_client.h"
 #include "golioth_lightdb.h"
+#include "golioth_statistic.h"
 
 #define TAG "golioth_lightdb"
 
@@ -46,6 +47,7 @@ golioth_status_t golioth_lightdb_set(
         ESP_LOGE(TAG, "Payload alloc failure");
         return GOLIOTH_ERR_MEM_ALLOC;
     }
+    golioth_statistic_add(GSTAT_ID_ALLOCATED_BYTES, payload_size);
 
     memcpy(payload_copy, payload, payload_size);
 
