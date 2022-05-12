@@ -29,17 +29,17 @@ step assumes you've installed esp-idf to `~/esp/esp-idf`.
 source ~/esp/esp-idf/export.sh
 ```
 
+By default, esp-idf assumes the target is `esp32`, but if you have a different
+target, such as the `esp32s3`, set the target in your environment:
+
+```sh
+export IDF_TARGET=esp32s3
+```
+
 Next, `cd` to the example directory:
 
 ```
 cd examples/X
-```
-
-By default, esp-idf assumes the target is `esp32`, but if you have a different
-target, such as the `esp32s3`, set the target:
-
-```sh
-idf.py set-target esp32s3
 ```
 
 Configure (optional):

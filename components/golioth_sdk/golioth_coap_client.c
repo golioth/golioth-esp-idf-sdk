@@ -1,30 +1,20 @@
+#include <stdbool.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <netdb.h>
-#include <sys/param.h>
-#include <stdbool.h>
-#include "freertos/FreeRTOS.h"
-#include "freertos/task.h"
-#include "freertos/event_groups.h"
-#include "esp_log.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
-#include "nvs_flash.h"
-#include "protocol_examples_common.h"
-#include "coap3/coap.h"
-#include "golioth_status.h"
+#include <netdb.h> // struct addrinfo
+#include <sys/param.h> // MIN
+#include <freertos/event_groups.h>
+#include <esp_log.h>
+#include <coap3/coap.h>
+#include "golioth_client.h"
+#include "golioth_coap_client.h"
 
-#define TAG "coap_minimal"
-
-//
-// Example config
-//
-#define EXAMPLE_COAP_PSK_ID "nicks_esp32s3_devkit-id@nicks-first-project"
-#define EXAMPLE_COAP_PSK "8e2b614316c6db46146ebfff44cd649f"
+#define TAG "golioth_coap_client"
 
 //
 // Golioth SDK config
 //
+#define CONFIG_GOLIOTH_COAP_HOST_URI "coaps://coap.golioth.io"
 
 // Maximum time, in milliseconds, the coap_task will wait for something
 // to arrive in the request queue.
@@ -38,61 +28,7 @@
 // If the queue is full, any attempts to queue new messages will fail.
 #define CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_MAX_ITEMS 10
 
-#define CONFIG_GOLIOTH_COAP_HOST_URI "coaps://coap.golioth.io"
-
-typedef struct {
-    // The CoAP path string (everything after coaps://coap.golioth.io/).
-    // Assumption: path is a string literal (i.e. we don't need to strcpy).
-    const char* path;
-    // Must be one of:
-    //   COAP_MEDIATYPE_APPLICATION_JSON
-    //   COAP_MEDIATYPE_APPLICATION_CBOR
-    uint32_t content_type;
-    // CoAP payload assumed to be dynamically allocated before enqueue
-    // and freed after dequeue.
-    uint8_t* payload;
-    // Size of payload, in bytes
-    size_t payload_size;
-} put_params_t;
-
-typedef struct {
-    const char* path;
-    uint32_t content_type;
-} get_params_t;
-
-typedef struct {
-    const char* path;
-} delete_params_t;
-
-typedef struct {
-    const char* path;
-    uint32_t content_type;
-} observe_params_t;
-
-// Internal struct, not user-facing
-typedef struct {
-    // Must be one of:
-    //  COAP_REQUEST_GET
-    //  COAP_REQUEST_PUT
-    //  COAP_REQUEST_DELETE
-    //  COAP_OPTION_OBSERVE
-    uint32_t type;
-    union {
-        get_params_t get;
-        put_params_t put;
-        delete_params_t delete;
-        observe_params_t observe;
-    };
-} coap_request_msg_t;
-
-typedef struct {
-    TaskHandle_t coap_task_handle;
-    QueueHandle_t request_queue;
-    bool coap_task_shutdown;
-    bool got_coap_response;
-} golioth_coap_client_t;
-
-static golioth_coap_client_t _client;
+static bool _initialized;
 
 static coap_response_t coap_response_handler(
         coap_session_t* session,
@@ -116,7 +52,11 @@ static coap_response_t coap_response_handler(
     printf("\n");
 
     ESP_LOGD(TAG, "got response");
-    _client.got_coap_response = true;
+
+    coap_context_t* coap_context = coap_session_get_context(session);
+    golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
+    client->got_coap_response = true;
+
     return COAP_RESPONSE_OK;
 }
 
@@ -191,7 +131,7 @@ static void golioth_coap_add_content_type(coap_pdu_t* request, uint32_t content_
             typebuf);
 }
 
-static void golioth_coap_get(const get_params_t* params, coap_session_t* session) {
+static void golioth_coap_get(const golioth_coap_get_params_t* params, coap_session_t* session) {
     coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_GET, session);
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() get failed");
@@ -204,7 +144,7 @@ static void golioth_coap_get(const get_params_t* params, coap_session_t* session
     coap_send(session, request);
 }
 
-static void golioth_coap_put(const put_params_t* params, coap_session_t* session) {
+static void golioth_coap_put(const golioth_coap_put_params_t* params, coap_session_t* session) {
     coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_PUT, session);
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() put failed");
@@ -218,7 +158,7 @@ static void golioth_coap_put(const put_params_t* params, coap_session_t* session
     coap_send(session, request);
 }
 
-static void golioth_coap_delete(const delete_params_t* params, coap_session_t* session) {
+static void golioth_coap_delete(const golioth_coap_delete_params_t* params, coap_session_t* session) {
     coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_DELETE, session);
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() delete failed");
@@ -230,7 +170,7 @@ static void golioth_coap_delete(const delete_params_t* params, coap_session_t* s
     coap_send(session, request);
 }
 
-static void golioth_coap_observe(const observe_params_t* params, coap_session_t* session) {
+static void golioth_coap_observe(const golioth_coap_observe_params_t* params, coap_session_t* session) {
     // GET with an OBSERVE option
     coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_GET, session);
     if (!request) {
@@ -247,12 +187,21 @@ static void golioth_coap_observe(const observe_params_t* params, coap_session_t*
 
 // Note: libcoap is not thread safe, so all rx/tx I/O for the session must be
 // done in this task.
-static void coap_client_task(void *arg) {
+static void golioth_coap_client_task(void *arg) {
+    golioth_coap_client_t* client = (golioth_coap_client_t*)arg;
+
     coap_context_t* coap_context = NULL;
     coap_session_t* coap_session = NULL;
 
     coap_context = coap_new_context(NULL);
-    assert(coap_context);
+    if (!coap_context) {
+        ESP_LOGE(TAG, "Failed to create CoAP context");
+        goto clean_up;
+    }
+
+    // Store out client pointer in the context, since it's needed in the reponse handler
+    // we register below.
+    coap_set_app_data(coap_context, client);
 
     // Enable block mode, required for Golioth DFU
     coap_context_set_block_mode(
@@ -285,10 +234,10 @@ static void coap_client_task(void *arg) {
     coap_dtls_cpsk_t dtls_psk = {
         .version = COAP_DTLS_CPSK_SETUP_VERSION,
         .client_sni = client_sni,
-        .psk_info.identity.s = (const uint8_t*)EXAMPLE_COAP_PSK_ID,
-        .psk_info.identity.length = sizeof(EXAMPLE_COAP_PSK_ID) - 1,
-        .psk_info.key.s = (const uint8_t*)EXAMPLE_COAP_PSK,
-        .psk_info.key.length = sizeof(EXAMPLE_COAP_PSK) - 1,
+        .psk_info.identity.s = (const uint8_t*)client->psk_id,
+        .psk_info.identity.length = client->psk_id_len,
+        .psk_info.key.s = (const uint8_t*)client->psk,
+        .psk_info.key.length = client->psk_len,
     };
     coap_session = coap_new_client_session_psk2(
             coap_context, NULL, &dst_addr, COAP_PROTO_DTLS, &dtls_psk);
@@ -298,33 +247,33 @@ static void coap_client_task(void *arg) {
     }
 
     ESP_LOGD(TAG, "Entering CoAP I/O loop");
-    coap_request_msg_t request_msg = {};
-    while (!_client.coap_task_shutdown) {
+    golioth_coap_request_msg_t request_msg = {};
+    while (!client->coap_task_shutdown) {
         // Wait for request message, with timeout
         bool got_request_msg = xQueueReceive(
-                _client.request_queue,
+                client->request_queue,
                 &request_msg,
                 CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS / portTICK_PERIOD_MS);
         if (got_request_msg) {
-            _client.got_coap_response = false;
+            client->got_coap_response = false;
 
             // Handle message and send request to server
             switch (request_msg.type) {
-                case COAP_REQUEST_GET:
+                case GOLIOTH_COAP_REQUEST_GET:
                     ESP_LOGD(TAG, "Handle GET %s", request_msg.get.path);
                     golioth_coap_get(&request_msg.get, coap_session);
                     break;
-                case COAP_REQUEST_PUT:
+                case GOLIOTH_COAP_REQUEST_PUT:
                     ESP_LOGD(TAG, "Handle PUT %s", request_msg.put.path);
                     golioth_coap_put(&request_msg.put, coap_session);
                     assert(request_msg.put.payload);
                     free(request_msg.put.payload);
                     break;
-                case COAP_REQUEST_DELETE:
+                case GOLIOTH_COAP_REQUEST_DELETE:
                     ESP_LOGD(TAG, "Handle DELETE %s", request_msg.delete.path);
                     golioth_coap_delete(&request_msg.delete, coap_session);
                     break;
-                case COAP_OPTION_OBSERVE:
+                case GOLIOTH_COAP_REQUEST_OBSERVE:
                     ESP_LOGD(TAG, "Handle OBSERVE %s", request_msg.observe.path);
                     golioth_coap_observe(&request_msg.observe, coap_session);
                     break;
@@ -341,7 +290,7 @@ static void coap_client_task(void *arg) {
                     ESP_LOGE(TAG, "Error in coap_io_process: %d", num_ms);
                     // TODO - How to handle this? Should we wait for WiFi and re-establish session?
                     break;
-                } else if (_client.got_coap_response) {
+                } else if (client->got_coap_response) {
                     ESP_LOGD(TAG, "Received response in %d ms", num_ms);
                     break;
                 } else {
@@ -355,13 +304,14 @@ static void coap_client_task(void *arg) {
 
             if (time_spent_waiting_ms >= CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
                 ESP_LOGE(TAG, "Timeout: never got a response from the server");
+                // TODO - How to handle this? Should we wait for WiFi and re-establish session?
             }
         }
     }
 
 clean_up:
     // Clear flag, in case the task gets restarted later
-    _client.coap_task_shutdown = false;
+    client->coap_task_shutdown = false;
 
     if (coap_session) {
         coap_session_release(coap_session);
@@ -374,135 +324,86 @@ clean_up:
     vTaskDelete(NULL);
 }
 
-void app_main(void) {
-    // Initialization required for connecting to WiFi
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    // Connect logs from libcoap to the ESP logger
-    coap_set_log_handler(coap_log_handler);
-    coap_set_log_level(6); // 3: error, 4: warning, 6: info, 7: debug
-
-    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
-     * Read "Establishing Wi-Fi or Ethernet Connection" section in
-     * $ENV{IDF_PATH}/examples/protocols/README.md for more information about this function.
-     */
-    ESP_ERROR_CHECK(example_connect());
-
-    _client.request_queue = xQueueCreate(CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_MAX_ITEMS, sizeof(coap_request_msg_t));
-    assert(_client.request_queue);
-
-    bool task_created = xTaskCreate(
-            coap_client_task,
-            "coap_client",
-            8 * 1024, // stack size in bytes (technically words, but on esp-idf words are bytes)
-            NULL,  // task arg
-            5,  // priority
-            &_client.coap_task_handle);
-    assert(task_created);
-
-    ESP_LOGI(TAG, "OBSERVE \".d/setting\"");
-    {
-        coap_request_msg_t request_msg = {
-            .type = COAP_OPTION_OBSERVE,
-            .observe = {
-                .path = ".d/setting",
-                .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
-            },
-        };
-        BaseType_t sent = xQueueSend(_client.request_queue, &request_msg, portMAX_DELAY);
-        assert(sent == pdTRUE);
+golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
+    if (!_initialized) {
+        // Connect logs from libcoap to the ESP logger
+        coap_set_log_handler(coap_log_handler);
+        coap_set_log_level(6); // 3: error, 4: warning, 6: info, 7: debug
+        _initialized = true;
     }
 
-    // Send a log every 10 seconds
-    int iteration = 0;
-    while (1) {
-        ESP_LOGI(TAG, "PUT \"logs\"");
-        {
-            const char* json_log = "{\"level\":\"info\",\"module\":\"example\",\"msg\":\"test\"}";
-            size_t json_log_len = strlen(json_log);
-            uint8_t* payload = (uint8_t*)calloc(1, json_log_len);
-            assert(payload);
-            memcpy(payload, json_log, json_log_len);
+    golioth_coap_client_t* new_client = calloc(1, sizeof(golioth_coap_client_t));
+    if (!new_client) {
+        ESP_LOGE(TAG, "Failed to allocate memory for client");
+        goto error;
+    }
 
-            coap_request_msg_t request_msg = {
-                .type = COAP_REQUEST_PUT,
-                .put = {
-                    .path = "logs",
-                    .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
-                    .payload = payload,
-                    .payload_size = json_log_len,
-                },
-            };
-            BaseType_t sent = xQueueSend(_client.request_queue, &request_msg, portMAX_DELAY);
-            assert(sent == pdTRUE);
-        }
+    new_client->psk_id = psk_id;
+    new_client->psk_id_len = strlen(psk_id);
+    new_client->psk = psk;
+    new_client->psk_len = strlen(psk);
 
-        ESP_LOGI(TAG, "PUT \".d/iteration\"");
-        {
-            char buf[16];
-            sprintf(buf, "%d", iteration);
-            size_t buflen = strlen(buf);
-            uint8_t* payload = (uint8_t*)calloc(1, buflen);
-            assert(payload);
-            memcpy(payload, buf, buflen);
-            coap_request_msg_t request_msg = {
-                .type = COAP_REQUEST_PUT,
-                .put = {
-                    .path = ".d/iteration",
-                    .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
-                    .payload = payload,
-                    .payload_size = buflen,
-                },
-            };
-            BaseType_t sent = xQueueSend(_client.request_queue, &request_msg, portMAX_DELAY);
-            assert(sent == pdTRUE);
-        }
+    new_client->request_queue = xQueueCreate(
+            CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_MAX_ITEMS,
+            sizeof(golioth_coap_request_msg_t));
+    if (!new_client->request_queue) {
+        ESP_LOGE(TAG, "Failed to create request queue");
+        goto error;
+    }
 
-        ESP_LOGI(TAG, "GET \".d\"");
-        {
-            coap_request_msg_t request_msg = {
-                .type = COAP_REQUEST_GET,
-                .get = {
-                    .path = ".d",
-                    .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
-                },
-            };
-            BaseType_t sent = xQueueSend(_client.request_queue, &request_msg, portMAX_DELAY);
-            assert(sent == pdTRUE);
-        }
+    // TODO - make the priority and stack size configurable
+    bool task_created = xTaskCreate(
+            golioth_coap_client_task,
+            "coap_client",
+            8 * 1024, // stack size in bytes
+            new_client,  // task arg
+            5,  // priority
+            &new_client->coap_task_handle);
+    if (!task_created) {
+        ESP_LOGE(TAG, "Failed to create client task");
+        goto error;
+    }
 
-        ESP_LOGI(TAG, "GET \".d/nonexistant\"");
-        {
-            coap_request_msg_t request_msg = {
-                .type = COAP_REQUEST_GET,
-                .get = {
-                    .path = ".d/nonexistant",
-                    .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
-                },
-            };
-            BaseType_t sent = xQueueSend(_client.request_queue, &request_msg, portMAX_DELAY);
-            assert(sent == pdTRUE);
-        }
+    return (golioth_client_t)new_client;
 
-        ESP_LOGI(TAG, "DELETE \".d/delete_me\"");
-        {
-            coap_request_msg_t request_msg = {
-                .type = COAP_REQUEST_DELETE,
-                .delete = {
-                    .path = ".d/delete_me",
-                },
-            };
-            BaseType_t sent = xQueueSend(_client.request_queue, &request_msg, portMAX_DELAY);
-            assert(sent == pdTRUE);
-        }
+error:
+    if (new_client) {
+        golioth_client_destroy(new_client);
+    }
+    return NULL;
+}
 
-        uint32_t free_heap = xPortGetFreeHeapSize();
-        uint32_t min_free_heap = xPortGetMinimumEverFreeHeapSize();
-        ESP_LOGI(TAG, "Free heap = %u bytes, Min ever free heap = %u", free_heap, min_free_heap);
-        ESP_LOGI(TAG, "app_main delaying for 10s...");
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
-        iteration++;
-    };
+golioth_status_t golioth_client_start(golioth_client_t client) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return GOLIOTH_ERR_NULL;
+    }
+    return GOLIOTH_ERR_NOT_IMPLEMENTED;
+}
+
+golioth_status_t golioth_client_stop(golioth_client_t client) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return GOLIOTH_ERR_NULL;
+    }
+    return GOLIOTH_ERR_NOT_IMPLEMENTED;
+}
+
+golioth_status_t golioth_client_restart(golioth_client_t client) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return GOLIOTH_ERR_NULL;
+    }
+    return GOLIOTH_ERR_NOT_IMPLEMENTED;
+}
+
+void golioth_client_destroy(golioth_client_t client) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (c->request_queue) {
+        vQueueDelete(c->request_queue);
+    }
+    if (c->coap_task_handle) {
+        vTaskDelete(c->coap_task_handle);
+    }
+    free(c);
 }
