@@ -8,14 +8,14 @@ config GOLIOTH_COAP_HOST_URI
 
 config GOLIOTH_COAP_RESPONSE_TIMEOUT_MS
     int "CoAP response timeout"
-    default 10000
+    default 93000
     help
         Maximum time, in milliseconds, the CoAP task will block while waiting
         for a response from the server.
 
 config GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS
     int "CoAP request queue timeout"
-    default 1000
+    default 5000
     help
         Maximum time, in milliseconds, the CoAP task will block while
         waiting for something to arrive in the request queue.

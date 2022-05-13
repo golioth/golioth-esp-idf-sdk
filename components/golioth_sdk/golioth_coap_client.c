@@ -44,8 +44,57 @@ static coap_response_t coap_response_handler(
     return COAP_RESPONSE_OK;
 }
 
+static int event_handler(coap_session_t *session, const coap_event_t event) {
+    ESP_LOGD(TAG, "event: 0x%04X", event);
+    switch(event) {
+        case COAP_EVENT_DTLS_CLOSED:
+        case COAP_EVENT_TCP_CLOSED:
+        case COAP_EVENT_SESSION_CLOSED:
+            // TODO - restart task
+            break;
+        case COAP_EVENT_DTLS_CONNECTED:
+        case COAP_EVENT_DTLS_RENEGOTIATE:
+        case COAP_EVENT_DTLS_ERROR:
+        case COAP_EVENT_TCP_CONNECTED:
+        case COAP_EVENT_TCP_FAILED:
+        case COAP_EVENT_SESSION_CONNECTED:
+        case COAP_EVENT_SESSION_FAILED:
+        case COAP_EVENT_PARTIAL_BLOCK:
+        default:
+            break;
+    }
+    return 0;
+}
+
+static void nack_handler(
+        coap_session_t *session,
+        const coap_pdu_t *sent,
+        const coap_nack_reason_t reason,
+        const coap_mid_t id) {
+    ESP_LOGD(TAG, "nack: %d", reason);
+    switch(reason) {
+        case COAP_NACK_TOO_MANY_RETRIES:
+        case COAP_NACK_NOT_DELIVERABLE:
+        case COAP_NACK_RST:
+        case COAP_NACK_TLS_FAILED:
+            // TODO - restart task
+            break;
+        case COAP_NACK_ICMP_ISSUE:
+        default:
+            break;
+    }
+}
+
 static void coap_log_handler(coap_log_t level, const char *message) {
-    ESP_LOGI("libcoap", "%s", message);
+    if (level <= LOG_ERR) {
+        ESP_LOGE("libcoap", "%s", message);
+    } else if (level <= LOG_WARNING) {
+        ESP_LOGW("libcoap", "%s", message);
+    } else if (level <= LOG_INFO) {
+        ESP_LOGI("libcoap", "%s", message);
+    } else {
+        ESP_LOGD("libcoap", "%s", message);
+    }
 }
 
 // DNS lookup of host_uri
@@ -187,6 +236,10 @@ static void golioth_coap_client_task(void *arg) {
     // we register below.
     coap_set_app_data(coap_context, client);
 
+    // TODO - keepalive's are disabled by default. Do we need them to overcome potential NAT issues?
+    // https://libcoap.net/doc/reference/develop/man_coap_keepalive.html
+    // coap_context_set_keepalive(coap_context, ping_seconds);
+
     // Enable block mode, required for Golioth DFU
     coap_context_set_block_mode(
             coap_context,
@@ -194,6 +247,8 @@ static void golioth_coap_client_task(void *arg) {
 
     // Register handler for all responses
     coap_register_response_handler(coap_context, coap_response_handler);
+    coap_register_event_handler(coap_context, event_handler);
+    coap_register_nack_handler(coap_context, nack_handler);
 
     // Split URI for host
     coap_uri_t host_uri = {};
@@ -239,6 +294,10 @@ static void golioth_coap_client_task(void *arg) {
                 &request_msg,
                 CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS / portTICK_PERIOD_MS);
         if (got_request_msg) {
+            // FIXME - this flag doesn't work
+            //
+            // Instead, we need to save the sent token and compare against received
+            // tokens to know if we got the response
             client->got_coap_response = false;
 
             // Handle message and send request to server
@@ -313,7 +372,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
     if (!_initialized) {
         // Connect logs from libcoap to the ESP logger
         coap_set_log_handler(coap_log_handler);
-        coap_set_log_level(6); // 3: error, 4: warning, 6: info, 7: debug
+        coap_set_log_level(7); // 3: error, 4: warning, 6: info, 7: debug, 9:mbedtls
 
         _initialized = true;
     }
