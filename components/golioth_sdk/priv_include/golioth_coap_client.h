@@ -52,6 +52,7 @@ typedef struct {
 } golioth_coap_request_msg_t;
 
 // This is the struct hidden by the opaque type golioth_client_t
+// TODO - document these once design is more stable
 typedef struct {
     QueueHandle_t request_queue;
     TaskHandle_t coap_task_handle;
