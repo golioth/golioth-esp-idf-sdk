@@ -15,14 +15,23 @@
 static bool _initialized;
 golioth_stats_t g_golioth_stats;
 
-static coap_response_t coap_response_handler(
-        coap_session_t* session,
-        const coap_pdu_t* sent,
-        const coap_pdu_t* received,
-        const coap_mid_t mid) {
-    coap_pdu_code_t rcvd_code = coap_pdu_get_code(received);
-    ESP_LOGI(TAG, "%d.%02d", (rcvd_code >> 5), rcvd_code & 0x1F);
+static bool token_matches_request(const coap_pdu_t* received, golioth_coap_client_t* client) {
+    coap_bin_const_t rcvd_token = coap_pdu_get_token(received);
+    bool len_matches = (rcvd_token.length == client->token_len);
+    return (len_matches && (0 == memcmp(rcvd_token.s, client->token, client->token_len)));
+}
 
+static bool is_observation(const coap_pdu_t* received) {
+    // TODO
+    return false;
+}
+
+static bool has_block2_option(const coap_pdu_t* received) {
+    // TODO
+    return false;
+}
+
+static void print_payload(const coap_pdu_t* received) {
     const unsigned char *data = NULL;
     size_t data_len = 0;
     size_t offset = 0;
@@ -35,12 +44,40 @@ static coap_response_t coap_response_handler(
         }
     }
     printf("\n");
+}
 
-    ESP_LOGD(TAG, "got response");
+static coap_response_t coap_response_handler(
+        coap_session_t* session,
+        const coap_pdu_t* sent,
+        const coap_pdu_t* received,
+        const coap_mid_t mid) {
+    coap_pdu_code_t rcvd_code = coap_pdu_get_code(received);
+    coap_pdu_type_t rcv_type = coap_pdu_get_type(received);
+    ESP_LOGI(TAG, "%d.%02d", (rcvd_code >> 5), rcvd_code & 0x1F);
+
+    // If we didn't send anything, and we got some kind of request, send RST
+    // to indicate we can't handle the request.
+    if (!sent && (rcv_type == COAP_MESSAGE_CON || rcv_type == COAP_MESSAGE_NON)) {
+        ESP_LOGW(TAG, "Got unexpected request. Sending RST.");
+        return COAP_RESPONSE_FAIL;
+    }
+
+    if (rcv_type == COAP_MESSAGE_RST) {
+        ESP_LOGW(TAG, "Got RST");
+        return COAP_RESPONSE_OK;
+    }
 
     coap_context_t* coap_context = coap_session_get_context(session);
     golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
-    client->got_coap_response = true;
+    if (token_matches_request(received, client)) {
+        // TODO - Handle request response
+        client->got_coap_response = true;
+    } else if (is_observation(received)) {
+        // TODO - Handle observations
+    } else if (has_block2_option(received)) {
+        // TODO - Handle BLOCK2 option
+    }
+    print_payload(received);
 
     return COAP_RESPONSE_OK;
 }
@@ -138,10 +175,12 @@ static golioth_status_t get_coap_dst_address(const coap_uri_t* host_uri, coap_ad
 }
 
 static void golioth_coap_add_token(coap_pdu_t* request, coap_session_t* session) {
-    size_t tokenlength = 0;
-    unsigned char token[8];
-    coap_session_new_token(session, &tokenlength, token);
-    coap_add_token(request, tokenlength, token);
+    // Token is stored in the client, so need to get a pointer to it from the context
+    coap_context_t* coap_context = coap_session_get_context(session);
+    golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
+
+    coap_session_new_token(session, &client->token_len, client->token);
+    coap_add_token(request, client->token_len, client->token);
 }
 
 static void golioth_coap_add_path(coap_pdu_t* request, const char* path) {
@@ -295,13 +334,8 @@ static void golioth_coap_client_task(void *arg) {
                 &request_msg,
                 CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS / portTICK_PERIOD_MS);
         if (got_request_msg) {
-            // FIXME - this flag doesn't work
-            //
-            // Instead, we need to save the sent token and compare against received
-            // tokens to know if we got the response
-            client->got_coap_response = false;
-
             // Handle message and send request to server
+            bool request_is_valid = true;
             switch (request_msg.type) {
                 case GOLIOTH_COAP_REQUEST_GET:
                     ESP_LOGD(TAG, "Handle GET %s", request_msg.get.path);
@@ -324,10 +358,17 @@ static void golioth_coap_client_task(void *arg) {
                     break;
                 default:
                     ESP_LOGW(TAG, "Unknown request_msg type: %u", request_msg.type);
+                    request_is_valid = false;
                     break;
             }
 
-            // Wait for response from server
+            if (!request_is_valid) {
+                continue;
+            }
+
+            // If we get here, then a confirmable request has been sent to the server,
+            // and we should wait for a response.
+            client->got_coap_response = false;
             uint32_t time_spent_waiting_ms = 0;
             while (time_spent_waiting_ms < CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
                 int num_ms = coap_io_process(coap_context, CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS);

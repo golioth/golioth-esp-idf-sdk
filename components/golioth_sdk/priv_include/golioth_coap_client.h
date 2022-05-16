@@ -56,6 +56,8 @@ typedef struct {
     QueueHandle_t request_queue;
     TaskHandle_t coap_task_handle;
     bool coap_task_shutdown;
+    uint8_t token[8];
+    size_t token_len;
     bool got_coap_response;
     const char* psk_id;
     size_t psk_id_len;
