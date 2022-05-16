@@ -40,7 +40,6 @@ void app_main(void) {
 
         golioth_lightdb_delete(client, ".d/delete_me");
 
-        golioth_statistic_print_all();
         uint32_t free_heap = xPortGetFreeHeapSize();
         uint32_t min_free_heap = xPortGetMinimumEverFreeHeapSize();
         ESP_LOGI(TAG, "Free heap = %u bytes, Min ever free heap = %u", free_heap, min_free_heap);

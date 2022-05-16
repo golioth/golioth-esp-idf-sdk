@@ -8,11 +8,12 @@
 #include <coap3/coap.h>
 #include "golioth_client.h"
 #include "golioth_coap_client.h"
-#include "golioth_statistic.h"
+#include "golioth_stats.h"
 
 #define TAG "golioth_coap_client"
 
 static bool _initialized;
+golioth_stats_t g_golioth_stats;
 
 static coap_response_t coap_response_handler(
         coap_session_t* session,
@@ -311,7 +312,7 @@ static void golioth_coap_client_task(void *arg) {
                     golioth_coap_put(&request_msg.put, coap_session);
                     assert(request_msg.put.payload);
                     free(request_msg.put.payload);
-                    golioth_statistic_add(GSTAT_ID_FREED_BYTES, request_msg.put.payload_size);
+                    g_golioth_stats.total_freed_bytes += request_msg.put.payload_size;
                     break;
                 case GOLIOTH_COAP_REQUEST_DELETE:
                     ESP_LOGD(TAG, "Handle DELETE %s", request_msg.delete.path);
@@ -382,7 +383,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
         ESP_LOGE(TAG, "Failed to allocate memory for client");
         goto error;
     }
-    golioth_statistic_add(GSTAT_ID_ALLOCATED_BYTES, sizeof(golioth_coap_client_t));
+    g_golioth_stats.total_allocd_bytes += sizeof(golioth_coap_client_t);
 
     new_client->psk_id = psk_id;
     new_client->psk_id_len = strlen(psk_id);
@@ -452,5 +453,5 @@ void golioth_client_destroy(golioth_client_t client) {
         vTaskDelete(c->coap_task_handle);
     }
     free(c);
-    golioth_statistic_add(GSTAT_ID_FREED_BYTES, sizeof(golioth_coap_client_t));
+    g_golioth_stats.total_freed_bytes += sizeof(golioth_coap_client_t);
 }
