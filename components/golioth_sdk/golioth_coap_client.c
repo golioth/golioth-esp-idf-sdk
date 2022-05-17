@@ -445,6 +445,11 @@ static void golioth_coap_client_task(void *arg) {
         client->end_session = false;
         client->session_connected = false;
 
+        ESP_LOGD(TAG, "Waiting for the \"run\" signal");
+        xSemaphoreTake(client->run_sem, portMAX_DELAY);
+        xSemaphoreGive(client->run_sem);
+        ESP_LOGD(TAG, "Received \"run\" signal");
+
         if (create_context(client, &coap_context) != GOLIOTH_OK) {
             goto cleanup;
         }
@@ -454,6 +459,13 @@ static void golioth_coap_client_task(void *arg) {
 
         ESP_LOGI(TAG, "Entering CoAP I/O loop");
         while (!client->end_session) {
+            // Check if we should still run (non-blocking)
+            if (!xSemaphoreTake(client->run_sem, 0)) {
+                ESP_LOGI(TAG, "Stopping");
+                break;
+            }
+            xSemaphoreGive(client->run_sem);
+
             if (coap_io_loop_once(client, coap_context, coap_session) != GOLIOTH_OK) {
                 client->end_session = true;
             }
@@ -496,6 +508,13 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
     new_client->psk = psk;
     new_client->psk_len = strlen(psk);
 
+    new_client->run_sem = xSemaphoreCreateBinary();
+    if (!new_client->run_sem) {
+        ESP_LOGE(TAG, "Failed to create run semaphore");
+        goto error;
+    }
+    xSemaphoreGive(new_client->run_sem);
+
     new_client->request_queue = xQueueCreate(
             CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_MAX_ITEMS,
             sizeof(golioth_coap_request_msg_t));
@@ -531,7 +550,8 @@ golioth_status_t golioth_client_start(golioth_client_t client) {
     if (!c) {
         return GOLIOTH_ERR_NULL;
     }
-    return GOLIOTH_ERR_NOT_IMPLEMENTED;
+    xSemaphoreGive(c->run_sem);
+    return GOLIOTH_OK;
 }
 
 golioth_status_t golioth_client_stop(golioth_client_t client) {
@@ -539,15 +559,11 @@ golioth_status_t golioth_client_stop(golioth_client_t client) {
     if (!c) {
         return GOLIOTH_ERR_NULL;
     }
-    return GOLIOTH_ERR_NOT_IMPLEMENTED;
-}
-
-golioth_status_t golioth_client_restart(golioth_client_t client) {
-    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
-    if (!c) {
-        return GOLIOTH_ERR_NULL;
+    if (!xSemaphoreTake(c->run_sem, 100 / portTICK_PERIOD_MS)) {
+        ESP_LOGE(TAG, "stop: failed to take run_sem");
+        return GOLIOTH_ERR_TIMEOUT;
     }
-    return GOLIOTH_ERR_NOT_IMPLEMENTED;
+    return GOLIOTH_OK;
 }
 
 void golioth_client_destroy(golioth_client_t client) {
