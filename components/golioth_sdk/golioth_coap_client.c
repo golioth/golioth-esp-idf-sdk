@@ -271,34 +271,35 @@ static void golioth_coap_observe(const golioth_coap_observe_params_t* params, co
     coap_send(session, request);
 }
 
-// Note: libcoap is not thread safe, so all rx/tx I/O for the session must be
-// done in this task.
-static void golioth_coap_client_task(void *arg) {
-    golioth_coap_client_t* client = (golioth_coap_client_t*)arg;
-
-    coap_context_t* coap_context = NULL;
-    coap_session_t* coap_session = NULL;
-
-    coap_context = coap_new_context(NULL);
-    if (!coap_context) {
+static golioth_status_t create_context(golioth_coap_client_t* client, coap_context_t** context) {
+    *context = coap_new_context(NULL);
+    if (!*context) {
         ESP_LOGE(TAG, "Failed to create CoAP context");
-        goto clean_up;
+        return GOLIOTH_ERR_MEM_ALLOC;
     }
 
-    // Store out client pointer in the context, since it's needed in the reponse handler
+    // Store our client pointer in the context, since it's needed in the reponse handler
     // we register below.
-    coap_set_app_data(coap_context, client);
+    coap_set_app_data(*context, client);
 
     // Enable block mode, required for Golioth DFU
     coap_context_set_block_mode(
-            coap_context,
+            *context,
             COAP_BLOCK_USE_LIBCOAP|COAP_BLOCK_SINGLE_BODY);
 
-    // Register handler for all responses
-    coap_register_response_handler(coap_context, coap_response_handler);
-    coap_register_event_handler(coap_context, event_handler);
-    coap_register_nack_handler(coap_context, nack_handler);
+    // Register handlers
+    coap_register_response_handler(*context, coap_response_handler);
+    coap_register_event_handler(*context, event_handler);
+    coap_register_nack_handler(*context, nack_handler);
 
+
+    return GOLIOTH_OK;
+}
+
+static golioth_status_t create_session(
+        golioth_coap_client_t* client,
+        coap_context_t* context,
+        coap_session_t** session) {
     // Split URI for host
     coap_uri_t host_uri = {};
     int uri_status = coap_split_uri(
@@ -307,14 +308,12 @@ static void golioth_coap_client_task(void *arg) {
             &host_uri);
     if (uri_status < 0) {
         ESP_LOGE(TAG, "CoAP host URI invalid: %s", CONFIG_GOLIOTH_COAP_HOST_URI);
-        goto clean_up;
+        return GOLIOTH_ERR_INVALID_FORMAT;
     }
 
     // Get destination address of host
     coap_address_t dst_addr = {};
-    if (get_coap_dst_address(&host_uri, &dst_addr) != GOLIOTH_OK) {
-        goto clean_up;
-    }
+    GOLIOTH_STATUS_RETURN_IF_ERROR(get_coap_dst_address(&host_uri, &dst_addr));
 
     ESP_LOGI(TAG, "Start CoAP session");
     char client_sni[256] = {};
@@ -327,100 +326,131 @@ static void golioth_coap_client_task(void *arg) {
         .psk_info.key.s = (const uint8_t*)client->psk,
         .psk_info.key.length = client->psk_len,
     };
-    coap_session = coap_new_client_session_psk2(
-            coap_context, NULL, &dst_addr, COAP_PROTO_DTLS, &dtls_psk);
-    if (!coap_session) {
+    *session = coap_new_client_session_psk2(
+            context, NULL, &dst_addr, COAP_PROTO_DTLS, &dtls_psk);
+    if (!*session) {
         ESP_LOGE(TAG, "coap_new_client_session() failed");
-        goto clean_up;
+        return GOLIOTH_ERR_MEM_ALLOC;
     }
 
-    ESP_LOGD(TAG, "Entering CoAP I/O loop");
+    return GOLIOTH_OK;
+}
+
+static golioth_status_t coap_io_loop_once(
+        golioth_coap_client_t* client,
+        coap_context_t* context,
+        coap_session_t* session) {
     golioth_coap_request_msg_t request_msg = {};
-    while (!client->coap_task_shutdown) {
-        // Wait for request message, with timeout
-        bool got_request_msg = xQueueReceive(
-                client->request_queue,
-                &request_msg,
-                CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS / portTICK_PERIOD_MS);
-        if (!got_request_msg) {
-            // No requests, so process other pending IO (e.g. observations)
-            coap_io_process(coap_context, COAP_IO_NO_WAIT);
-            continue;
+
+    // Wait for request message, with timeout
+    bool got_request_msg = xQueueReceive(
+            client->request_queue,
+            &request_msg,
+            CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS / portTICK_PERIOD_MS);
+    if (!got_request_msg) {
+        // No requests, so process other pending IO (e.g. observations)
+        coap_io_process(context, COAP_IO_NO_WAIT);
+        return GOLIOTH_OK;
+    }
+
+    // Handle message and send request to server
+    bool request_is_valid = true;
+    switch (request_msg.type) {
+        case GOLIOTH_COAP_REQUEST_GET:
+            ESP_LOGD(TAG, "Handle GET %s", request_msg.get.path);
+            golioth_coap_get(&request_msg.get, session);
+            break;
+        case GOLIOTH_COAP_REQUEST_PUT:
+            ESP_LOGD(TAG, "Handle PUT %s", request_msg.put.path);
+            golioth_coap_put(&request_msg.put, session);
+            assert(request_msg.put.payload);
+            free(request_msg.put.payload);
+            g_golioth_stats.total_freed_bytes += request_msg.put.payload_size;
+            break;
+        case GOLIOTH_COAP_REQUEST_DELETE:
+            ESP_LOGD(TAG, "Handle DELETE %s", request_msg.delete.path);
+            golioth_coap_delete(&request_msg.delete, session);
+            break;
+        case GOLIOTH_COAP_REQUEST_OBSERVE:
+            ESP_LOGD(TAG, "Handle OBSERVE %s", request_msg.observe.path);
+            golioth_coap_observe(&request_msg.observe, session);
+            break;
+        default:
+            ESP_LOGW(TAG, "Unknown request_msg type: %u", request_msg.type);
+            request_is_valid = false;
+            break;
+    }
+    if (!request_is_valid) {
+        return GOLIOTH_OK;
+    }
+
+    // If we get here, then a confirmable request has been sent to the server,
+    // and we should wait for a response.
+    client->got_coap_response = false;
+    int32_t time_spent_waiting_ms = 0;
+    while (time_spent_waiting_ms < CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
+        int32_t remaining_ms = CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS - time_spent_waiting_ms;
+        int32_t wait_ms = min(1000, remaining_ms);
+        int32_t num_ms = coap_io_process(context, wait_ms);
+        if (num_ms < 0) {
+            ESP_LOGE(TAG, "Error in coap_io_process: %d", num_ms);
+            return GOLIOTH_ERR_IO;
+        } else if (client->got_coap_response) {
+            ESP_LOGD(TAG, "Received response in %d ms", num_ms);
+            break;
+        } else {
+            // During normal operation, there will be other kinds of IO to process,
+            // in which case we will get here.
+            //
+            // Since we haven't received the response yet, just keep waiting.
+            time_spent_waiting_ms += num_ms;
+        }
+    }
+
+    if (time_spent_waiting_ms >= CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
+        ESP_LOGE(TAG, "Timeout: never got a response from the server");
+        return GOLIOTH_ERR_TIMEOUT;
+    }
+
+    return GOLIOTH_OK;
+}
+
+// Note: libcoap is not thread safe, so all rx/tx I/O for the session must be
+// done in this task.
+static void golioth_coap_client_task(void *arg) {
+    golioth_coap_client_t* client = (golioth_coap_client_t*)arg;
+
+    while (1) {
+        coap_context_t* coap_context = NULL;
+        coap_session_t* coap_session = NULL;
+
+        if (create_context(client, &coap_context) != GOLIOTH_OK) {
+            goto cleanup;
+        }
+        if (create_session(client, coap_context, &coap_session) != GOLIOTH_OK) {
+            goto cleanup;
         }
 
-        // Handle message and send request to server
-        bool request_is_valid = true;
-        switch (request_msg.type) {
-            case GOLIOTH_COAP_REQUEST_GET:
-                ESP_LOGD(TAG, "Handle GET %s", request_msg.get.path);
-                golioth_coap_get(&request_msg.get, coap_session);
-                break;
-            case GOLIOTH_COAP_REQUEST_PUT:
-                ESP_LOGD(TAG, "Handle PUT %s", request_msg.put.path);
-                golioth_coap_put(&request_msg.put, coap_session);
-                assert(request_msg.put.payload);
-                free(request_msg.put.payload);
-                g_golioth_stats.total_freed_bytes += request_msg.put.payload_size;
-                break;
-            case GOLIOTH_COAP_REQUEST_DELETE:
-                ESP_LOGD(TAG, "Handle DELETE %s", request_msg.delete.path);
-                golioth_coap_delete(&request_msg.delete, coap_session);
-                break;
-            case GOLIOTH_COAP_REQUEST_OBSERVE:
-                ESP_LOGD(TAG, "Handle OBSERVE %s", request_msg.observe.path);
-                golioth_coap_observe(&request_msg.observe, coap_session);
-                break;
-            default:
-                ESP_LOGW(TAG, "Unknown request_msg type: %u", request_msg.type);
-                request_is_valid = false;
-                break;
-        }
-        if (!request_is_valid) {
-            continue;
-        }
-
-        // If we get here, then a confirmable request has been sent to the server,
-        // and we should wait for a response.
-        client->got_coap_response = false;
-        int32_t time_spent_waiting_ms = 0;
-        while (time_spent_waiting_ms < CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
-            int32_t remaining_ms = CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS - time_spent_waiting_ms;
-            int32_t wait_ms = min(1000, remaining_ms);
-            int32_t num_ms = coap_io_process(coap_context, wait_ms);
-            if (num_ms < 0) {
-                ESP_LOGE(TAG, "Error in coap_io_process: %d", num_ms);
-                // TODO - How to handle this? Should we wait for WiFi and re-establish session?
-                break;
-            } else if (client->got_coap_response) {
-                ESP_LOGD(TAG, "Received response in %d ms", num_ms);
-                break;
-            } else {
-                // During normal operation, there will be other kinds of IO to process,
-                // in which case we will get here.
-                //
-                // Since we haven't received the response yet, just keep waiting.
-                time_spent_waiting_ms += num_ms;
+        ESP_LOGI(TAG, "Entering CoAP I/O loop");
+        while (!client->end_session) {
+            if (coap_io_loop_once(client, coap_context, coap_session) != GOLIOTH_OK) {
+                client->end_session = true;
             }
         }
 
-        if (time_spent_waiting_ms >= CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
-            ESP_LOGE(TAG, "Timeout: never got a response from the server");
-            // TODO - How to handle this? Should we wait for WiFi and re-establish session?
+cleanup:
+        ESP_LOGI(TAG, "End session");
+        client->end_session = false; // clear flag to prep for next interation
+        if (coap_session) {
+            coap_session_release(coap_session);
         }
+        if (coap_context) {
+            coap_free_context(coap_context);
+        }
+        coap_cleanup();
+        ESP_LOGI(TAG, "Delay before re-starting session");
+        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
-
-clean_up:
-    // Clear flag, in case the task gets restarted later
-    client->coap_task_shutdown = false;
-
-    if (coap_session) {
-        coap_session_release(coap_session);
-    }
-    if (coap_context) {
-        coap_free_context(coap_context);
-    }
-    coap_cleanup();
-    ESP_LOGI(TAG, "Task exiting");
     vTaskDelete(NULL);
 }
 
