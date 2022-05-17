@@ -41,4 +41,15 @@ config GOLIOTH_COAP_TASK_STACK_SIZE_BYTES
     help
         FreeRTOS task stack size of the Golioth CoAP task, in bytes.
 
+config GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS
+    int "Golioth CoAP keepalive interval, in milliseconds"
+    default 0
+    help
+        How often to send a "keepalive" dummy client request to the server.
+        If the session is idle for this amount of time, then the keepalive
+        request will be sent.
+        Can be useful to keep the CoAP session active, and to mitigate
+        against NAT and server timeouts.
+        Set to 0 to disable.
+
 endmenu

@@ -5,6 +5,7 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 #include <coap3/coap.h> // COAP_MEDIATYPE_*
+#include "golioth_client.h"
 
 typedef struct {
     // The CoAP path string (everything after coaps://coap.golioth.io/).
@@ -55,6 +56,7 @@ typedef struct {
 // This is the struct hidden by the opaque type golioth_client_t
 // TODO - document these once design is more stable
 typedef struct {
+    golioth_client_config_t config;
     QueueHandle_t request_queue;
     TaskHandle_t coap_task_handle;
     bool end_session;
@@ -63,8 +65,6 @@ typedef struct {
     uint8_t token[8];
     size_t token_len;
     bool got_coap_response;
-    const char* psk_id;
     size_t psk_id_len;
-    const char* psk;
     size_t psk_len;
 } golioth_coap_client_t;

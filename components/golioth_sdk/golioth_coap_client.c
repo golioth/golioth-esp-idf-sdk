@@ -333,9 +333,9 @@ static golioth_status_t create_session(
     coap_dtls_cpsk_t dtls_psk = {
         .version = COAP_DTLS_CPSK_SETUP_VERSION,
         .client_sni = client_sni,
-        .psk_info.identity.s = (const uint8_t*)client->psk_id,
+        .psk_info.identity.s = (const uint8_t*)client->config.psk_id,
         .psk_info.identity.length = client->psk_id_len,
-        .psk_info.key.s = (const uint8_t*)client->psk,
+        .psk_info.key.s = (const uint8_t*)client->config.psk,
         .psk_info.key.length = client->psk_len,
     };
     *session = coap_new_client_session_psk2(
@@ -487,7 +487,7 @@ cleanup:
     vTaskDelete(NULL);
 }
 
-golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
+golioth_client_t golioth_client_create(const golioth_client_config_t* config) {
     if (!_initialized) {
         // Connect logs from libcoap to the ESP logger
         coap_set_log_handler(coap_log_handler);
@@ -503,10 +503,9 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
     }
     g_golioth_stats.total_allocd_bytes += sizeof(golioth_coap_client_t);
 
-    new_client->psk_id = psk_id;
-    new_client->psk_id_len = strlen(psk_id);
-    new_client->psk = psk;
-    new_client->psk_len = strlen(psk);
+    new_client->config = *config;
+    new_client->psk_id_len = strlen(config->psk_id);
+    new_client->psk_len = strlen(config->psk);
 
     new_client->run_sem = xSemaphoreCreateBinary();
     if (!new_client->run_sem) {
@@ -567,6 +566,12 @@ golioth_status_t golioth_client_stop(golioth_client_t client) {
 
 void golioth_client_destroy(golioth_client_t client) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return;
+    }
+    if (c->run_sem) {
+        vSemaphoreDelete(c->run_sem);
+    }
     if (c->request_queue) {
         vQueueDelete(c->request_queue);
     }

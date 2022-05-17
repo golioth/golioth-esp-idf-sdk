@@ -18,9 +18,11 @@ void app_main(void) {
     // See $ENV{IDF_PATH}/examples/protocols/README.md for details
     ESP_ERROR_CHECK(example_connect());
 
-    golioth_client_t client = golioth_client_create(
-            CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID,
-            CONFIG_GOLIOTH_EXAMPLE_COAP_PSK);
+    golioth_client_config_t config = {
+        .psk_id = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID,
+        .psk = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK,
+    };
+    golioth_client_t client = golioth_client_create(&config);
     assert(client);
 
     golioth_lightdb_observe(client, ".d/setting");

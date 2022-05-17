@@ -5,7 +5,12 @@
 // Opaque handle to the Golioth client
 typedef void* golioth_client_t;
 
-golioth_client_t golioth_client_create(const char* psk_id, const char* psk);
+typedef struct {
+    const char* psk_id;
+    const char* psk;
+} golioth_client_config_t;
+
+golioth_client_t golioth_client_create(const golioth_client_config_t* config);
 
 // Note: client automatically started by golioth_client_create
 golioth_status_t golioth_client_start(golioth_client_t client);
