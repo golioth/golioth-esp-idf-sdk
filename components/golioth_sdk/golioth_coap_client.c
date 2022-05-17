@@ -523,13 +523,12 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
         goto error;
     }
 
-    // TODO - make the priority and stack size configurable
     bool task_created = xTaskCreate(
             golioth_coap_client_task,
             "coap_client",
-            8 * 1024, // stack size in bytes
+            CONFIG_GOLIOTH_COAP_TASK_STACK_SIZE_BYTES,
             new_client,  // task arg
-            5,  // priority
+            CONFIG_GOLIOTH_COAP_TASK_PRIORITY,
             &new_client->coap_task_handle);
     if (!task_created) {
         ESP_LOGE(TAG, "Failed to create client task");
