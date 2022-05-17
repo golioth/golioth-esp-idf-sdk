@@ -36,7 +36,10 @@ golioth_status_t golioth_log(golioth_client_t client, const char* log_message) {
         },
     };
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
-    assert(sent == pdTRUE);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        return GOLIOTH_ERR_QUEUE_FULL;
+    }
 
     return GOLIOTH_OK;
 }

@@ -23,8 +23,11 @@ golioth_status_t golioth_lightdb_observe(golioth_client_t client, const char* pa
             .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
         },
     };
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
-    assert(sent == pdTRUE);
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        return GOLIOTH_ERR_QUEUE_FULL;
+    }
 
     return GOLIOTH_OK;
 }
@@ -61,8 +64,11 @@ golioth_status_t golioth_lightdb_set(
         },
     };
 
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
-    assert(sent == pdTRUE);
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        return GOLIOTH_ERR_QUEUE_FULL;
+    }
 
     return GOLIOTH_OK;
 }
@@ -81,8 +87,11 @@ golioth_status_t golioth_lightdb_get(golioth_client_t client, const char* path) 
             .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
         },
     };
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
-    assert(sent == pdTRUE);
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        return GOLIOTH_ERR_QUEUE_FULL;
+    }
 
     return GOLIOTH_OK;
 }
@@ -100,8 +109,11 @@ golioth_status_t golioth_lightdb_delete(golioth_client_t client, const char* pat
         },
     };
 
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
-    assert(sent == pdTRUE);
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        return GOLIOTH_ERR_QUEUE_FULL;
+    }
 
     return GOLIOTH_OK;
 }

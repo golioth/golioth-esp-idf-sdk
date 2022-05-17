@@ -87,22 +87,30 @@ static coap_response_t coap_response_handler(
 }
 
 static int event_handler(coap_session_t *session, const coap_event_t event) {
+    coap_context_t* coap_context = coap_session_get_context(session);
+    golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
+
     ESP_LOGD(TAG, "event: 0x%04X", event);
     switch(event) {
-        case COAP_EVENT_DTLS_CLOSED:
-        case COAP_EVENT_TCP_CLOSED:
-        case COAP_EVENT_SESSION_CLOSED:
-            ESP_LOGE(TAG, "Closed");
-            // TODO - restart task
+        case COAP_EVENT_SESSION_CONNECTED:
+            ESP_LOGI(TAG, "Session connected");
+            client->session_connected = true;
             break;
         case COAP_EVENT_DTLS_CONNECTED:
         case COAP_EVENT_DTLS_RENEGOTIATE:
-        case COAP_EVENT_DTLS_ERROR:
-        case COAP_EVENT_TCP_CONNECTED:
-        case COAP_EVENT_TCP_FAILED:
-        case COAP_EVENT_SESSION_CONNECTED:
-        case COAP_EVENT_SESSION_FAILED:
         case COAP_EVENT_PARTIAL_BLOCK:
+        case COAP_EVENT_TCP_CONNECTED:
+            break;
+        case COAP_EVENT_DTLS_CLOSED:
+        case COAP_EVENT_TCP_CLOSED:
+        case COAP_EVENT_SESSION_CLOSED:
+        case COAP_EVENT_DTLS_ERROR:
+        case COAP_EVENT_TCP_FAILED:
+        case COAP_EVENT_SESSION_FAILED:
+            ESP_LOGE(TAG, "Session error. Ending session.");
+            client->session_connected = false;
+            client->end_session = true;
+            break;
         default:
             break;
     }
@@ -114,15 +122,19 @@ static void nack_handler(
         const coap_pdu_t *sent,
         const coap_nack_reason_t reason,
         const coap_mid_t id) {
-    ESP_LOGD(TAG, "nack: %d", reason);
+    coap_context_t* coap_context = coap_session_get_context(session);
+    golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
+
     switch(reason) {
         case COAP_NACK_TOO_MANY_RETRIES:
         case COAP_NACK_NOT_DELIVERABLE:
         case COAP_NACK_RST:
         case COAP_NACK_TLS_FAILED:
-            // TODO - restart task
-            break;
         case COAP_NACK_ICMP_ISSUE:
+            ESP_LOGE(TAG, "Received nack reason: %d. Ending session.", reason);
+            client->session_connected = false;
+            client->end_session = true;
+            break;
         default:
             break;
     }
@@ -349,7 +361,9 @@ static golioth_status_t coap_io_loop_once(
             CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS / portTICK_PERIOD_MS);
     if (!got_request_msg) {
         // No requests, so process other pending IO (e.g. observations)
+        ESP_LOGD(TAG, "Idle io process start");
         coap_io_process(context, COAP_IO_NO_WAIT);
+        ESP_LOGD(TAG, "Idle io process end");
         return GOLIOTH_OK;
     }
 
@@ -391,7 +405,9 @@ static golioth_status_t coap_io_loop_once(
     while (time_spent_waiting_ms < CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
         int32_t remaining_ms = CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS - time_spent_waiting_ms;
         int32_t wait_ms = min(1000, remaining_ms);
+        ESP_LOGD(TAG, "Response wait io process start");
         int32_t num_ms = coap_io_process(context, wait_ms);
+        ESP_LOGD(TAG, "Response wait io process end");
         if (num_ms < 0) {
             ESP_LOGE(TAG, "Error in coap_io_process: %d", num_ms);
             return GOLIOTH_ERR_IO;
@@ -409,9 +425,11 @@ static golioth_status_t coap_io_loop_once(
 
     if (time_spent_waiting_ms >= CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
         ESP_LOGE(TAG, "Timeout: never got a response from the server");
+        client->session_connected = false;
         return GOLIOTH_ERR_TIMEOUT;
     }
 
+    client->session_connected = true;
     return GOLIOTH_OK;
 }
 
@@ -423,6 +441,9 @@ static void golioth_coap_client_task(void *arg) {
     while (1) {
         coap_context_t* coap_context = NULL;
         coap_session_t* coap_session = NULL;
+
+        client->end_session = false;
+        client->session_connected = false;
 
         if (create_context(client, &coap_context) != GOLIOTH_OK) {
             goto cleanup;
@@ -439,8 +460,7 @@ static void golioth_coap_client_task(void *arg) {
         }
 
 cleanup:
-        ESP_LOGI(TAG, "End session");
-        client->end_session = false; // clear flag to prep for next interation
+        ESP_LOGI(TAG, "Ending session");
         if (coap_session) {
             coap_session_release(coap_session);
         }
@@ -448,6 +468,7 @@ cleanup:
             coap_free_context(coap_context);
         }
         coap_cleanup();
+
         ESP_LOGI(TAG, "Delay before re-starting session");
         vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
@@ -539,4 +560,12 @@ void golioth_client_destroy(golioth_client_t client) {
     }
     free(c);
     g_golioth_stats.total_freed_bytes += sizeof(golioth_coap_client_t);
+}
+
+bool golioth_client_is_connected(golioth_client_t client) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return false;
+    }
+    return c->session_connected;
 }
