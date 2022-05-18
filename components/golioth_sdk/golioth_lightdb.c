@@ -5,6 +5,8 @@
 
 #define TAG "golioth_lightdb"
 
+#if 0
+
 // TODO - The implementations here are not lightdb specific.
 // It might be better to put this code in a file named golioth_coap_async.c,
 // so it can be used across the higher-level services (like log, lightdb, etc).
@@ -116,4 +118,64 @@ golioth_status_t golioth_lightdb_delete(golioth_client_t client, const char* pat
     }
 
     return GOLIOTH_OK;
+}
+#endif
+
+golioth_status_t golioth_lightdb_get(
+        golioth_client_t client,
+        const char* path,
+        golioth_get_cb_fn callback,
+        void* arg) {
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_lightdb_observe(
+        golioth_client_t client,
+        const char* path,
+        golioth_get_cb_fn callback,
+        void* arg) {
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_lightdb_set_int(
+        golioth_client_t client,
+        const char* path,
+        int32_t value) {
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_lightdb_set_bool(
+        golioth_client_t client,
+        const char* path,
+        bool value) {
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_lightdb_set_float(
+        golioth_client_t client,
+        const char* path,
+        float value) {
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_lightdb_set_string(
+        golioth_client_t client,
+        const char* path,
+        const char* str,
+        size_t str_len) {
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_lightdb_delete(
+        golioth_client_t client,
+        const char* path) {
+    return GOLIOTH_OK;
+}
+
+int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size) {
+    return strtol((const char*)payload, NULL, 10);
+}
+
+float golioth_payload_as_float(const uint8_t* payload, size_t payload_size) {
+    return strtof((const char*)payload, NULL);
 }

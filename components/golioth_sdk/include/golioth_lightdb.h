@@ -3,18 +3,46 @@
 #include "golioth_status.h"
 #include "golioth_client.h"
 
-// TODO - user registers callback and content type
-golioth_status_t golioth_lightdb_observe(golioth_client_t client, const char* path);
-
-// TODO - user provides content type
-// TODO - set_int, set_string, set_json, set_bool, set_float
-golioth_status_t golioth_lightdb_set(
-        golioth_client_t client,
+typedef void (*golioth_get_cb_fn)(
         const char* path,
         const uint8_t* payload,
-        size_t payload_size);
+        size_t payload_size,
+        void* arg);
 
-// TODO - user registers callback and content type
-golioth_status_t golioth_lightdb_get(golioth_client_t client, const char* path);
+// Deserialization
+int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size);
+float golioth_payload_as_float(const uint8_t* payload, size_t payload_size);
 
-golioth_status_t golioth_lightdb_delete(golioth_client_t client, const char* path);
+// Async API
+golioth_status_t golioth_lightdb_get(
+        golioth_client_t client,
+        const char* path,
+        golioth_get_cb_fn callback,
+        void* arg);
+golioth_status_t golioth_lightdb_observe(
+        golioth_client_t client,
+        const char* path,
+        golioth_get_cb_fn callback,
+        void* arg);
+golioth_status_t golioth_lightdb_set_int(
+        golioth_client_t client,
+        const char* path,
+        int32_t value);
+golioth_status_t golioth_lightdb_set_bool(
+        golioth_client_t client,
+        const char* path,
+        bool value);
+golioth_status_t golioth_lightdb_set_float(
+        golioth_client_t client,
+        const char* path,
+        float value);
+golioth_status_t golioth_lightdb_set_string(
+        golioth_client_t client,
+        const char* path,
+        const char* str,
+        size_t str_len);
+golioth_status_t golioth_lightdb_delete(
+        golioth_client_t client,
+        const char* path);
+
+// TODO - Sync API

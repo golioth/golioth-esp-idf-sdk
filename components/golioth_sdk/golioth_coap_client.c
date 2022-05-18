@@ -9,16 +9,9 @@
 #include "golioth_client.h"
 #include "golioth_coap_client.h"
 #include "golioth_stats.h"
+#include "golioth_util.h"
 
 #define TAG "golioth_coap_client"
-
-#ifndef min
-#define min(a,b) ((a) < (b) ? (a) : (b))
-#endif
-
-#ifndef max
-#define max(a,b) ((a) > (b) ? (a) : (b))
-#endif
 
 static bool _initialized;
 golioth_stats_t g_golioth_stats;
@@ -40,6 +33,10 @@ static bool has_block2_option(const coap_pdu_t* received) {
 }
 
 static void print_payload(const coap_pdu_t* received) {
+    if (esp_log_level_get(TAG) < ESP_LOG_DEBUG) {
+        return;
+    }
+
     const unsigned char *data = NULL;
     size_t data_len = 0;
     size_t offset = 0;
@@ -61,7 +58,7 @@ static coap_response_t coap_response_handler(
         const coap_mid_t mid) {
     coap_pdu_code_t rcvd_code = coap_pdu_get_code(received);
     coap_pdu_type_t rcv_type = coap_pdu_get_type(received);
-    ESP_LOGI(TAG, "%d.%02d", (rcvd_code >> 5), rcvd_code & 0x1F);
+    ESP_LOGD(TAG, "%d.%02d", (rcvd_code >> 5), rcvd_code & 0x1F);
 
     // If we didn't send anything, and we got some kind of request, send RST
     // to indicate we can't handle the request.
@@ -344,9 +341,9 @@ static golioth_status_t create_session(
     coap_dtls_cpsk_t dtls_psk = {
         .version = COAP_DTLS_CPSK_SETUP_VERSION,
         .client_sni = client_sni,
-        .psk_info.identity.s = (const uint8_t*)client->config.psk_id,
+        .psk_info.identity.s = (const uint8_t*)client->psk_id,
         .psk_info.identity.length = client->psk_id_len,
-        .psk_info.key.s = (const uint8_t*)client->config.psk,
+        .psk_info.key.s = (const uint8_t*)client->psk,
         .psk_info.key.length = client->psk_len,
     };
     *session = coap_new_client_session_psk2(
@@ -463,6 +460,12 @@ static void on_keepalive(TimerHandle_t timer) {
     }
 }
 
+static void print_heap_usage(void) {
+    uint32_t free_heap = xPortGetFreeHeapSize();
+    uint32_t min_free_heap = xPortGetMinimumEverFreeHeapSize();
+    ESP_LOGD(TAG, "Free heap = %u bytes, Min ever free heap = %u", free_heap, min_free_heap);
+}
+
 // Note: libcoap is not thread safe, so all rx/tx I/O for the session must be
 // done in this task.
 static void golioth_coap_client_task(void *arg) {
@@ -488,6 +491,7 @@ static void golioth_coap_client_task(void *arg) {
         }
 
         ESP_LOGI(TAG, "Entering CoAP I/O loop");
+        int iteration = 0;
         while (!client->end_session) {
             // Check if we should still run (non-blocking)
             if (!xSemaphoreTake(client->run_sem, 0)) {
@@ -499,6 +503,10 @@ static void golioth_coap_client_task(void *arg) {
             if (coap_io_loop_once(client, coap_context, coap_session) != GOLIOTH_OK) {
                 client->end_session = true;
             }
+            if ((iteration % 10) == 0) {
+                print_heap_usage();
+            }
+            iteration++;
         }
 
 cleanup:
@@ -517,7 +525,7 @@ cleanup:
     vTaskDelete(NULL);
 }
 
-golioth_client_t golioth_client_create(const golioth_client_config_t* config) {
+golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
     if (!_initialized) {
         // Connect logs from libcoap to the ESP logger
         coap_set_log_handler(coap_log_handler);
@@ -533,9 +541,10 @@ golioth_client_t golioth_client_create(const golioth_client_config_t* config) {
     }
     g_golioth_stats.total_allocd_bytes += sizeof(golioth_coap_client_t);
 
-    new_client->config = *config;
-    new_client->psk_id_len = strlen(config->psk_id);
-    new_client->psk_len = strlen(config->psk);
+    new_client->psk_id = psk_id;
+    new_client->psk_id_len = strlen(psk_id);
+    new_client->psk = psk;
+    new_client->psk_len = strlen(psk);
 
     new_client->run_sem = xSemaphoreCreateBinary();
     if (!new_client->run_sem) {
@@ -585,9 +594,7 @@ golioth_client_t golioth_client_create(const golioth_client_config_t* config) {
     return (golioth_client_t)new_client;
 
 error:
-    if (new_client) {
-        golioth_client_destroy(new_client);
-    }
+    golioth_client_destroy(new_client);
     return NULL;
 }
 
@@ -623,6 +630,7 @@ void golioth_client_destroy(golioth_client_t client) {
     if (c->coap_task_handle) {
         vTaskDelete(c->coap_task_handle);
     }
+    // TODO: purge queue, free dyn mem for requests that have it
     if (c->request_queue) {
         vQueueDelete(c->request_queue);
     }

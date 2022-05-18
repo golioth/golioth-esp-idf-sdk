@@ -7,6 +7,7 @@
 
 #define CONFIG_GOLIOTH_LOG_MAX_MESSAGE_LEN 100
 
+#if 0
 golioth_status_t golioth_log(golioth_client_t client, const char* log_message) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
@@ -41,5 +42,22 @@ golioth_status_t golioth_log(golioth_client_t client, const char* log_message) {
         return GOLIOTH_ERR_QUEUE_FULL;
     }
 
+    return GOLIOTH_OK;
+}
+#endif
+
+golioth_status_t golioth_log_error(golioth_client_t client, const char* tag, const char* log_message) {
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_log_warn(golioth_client_t client, const char* tag, const char* log_message) {
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_log_info(golioth_client_t client, const char* tag, const char* log_message) {
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_log_debug(golioth_client_t client, const char* tag, const char* log_message) {
     return GOLIOTH_OK;
 }
