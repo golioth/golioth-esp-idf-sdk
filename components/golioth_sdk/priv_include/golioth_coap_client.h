@@ -4,6 +4,7 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
+#include <freertos/timers.h>
 #include <coap3/coap.h> // COAP_MEDIATYPE_*
 #include "golioth_client.h"
 
@@ -59,9 +60,10 @@ typedef struct {
     golioth_client_config_t config;
     QueueHandle_t request_queue;
     TaskHandle_t coap_task_handle;
+    SemaphoreHandle_t run_sem;
+    TimerHandle_t keepalive_timer;
     bool end_session;
     bool session_connected;
-    SemaphoreHandle_t run_sem;
     uint8_t token[8];
     size_t token_len;
     bool got_coap_response;

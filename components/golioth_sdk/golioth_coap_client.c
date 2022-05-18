@@ -16,6 +16,10 @@
 #define min(a,b) ((a) < (b) ? (a) : (b))
 #endif
 
+#ifndef max
+#define max(a,b) ((a) > (b) ? (a) : (b))
+#endif
+
 static bool _initialized;
 golioth_stats_t g_golioth_stats;
 
@@ -73,6 +77,13 @@ static coap_response_t coap_response_handler(
 
     coap_context_t* coap_context = coap_session_get_context(session);
     golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
+
+    if (CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS > 0) {
+        if (!xTimerReset(client->keepalive_timer, 0)) {
+            ESP_LOGW(TAG, "Failed to reset keepalive timer");
+        }
+    }
+
     if (token_matches_request(received, client)) {
         // TODO - Handle request response
         client->got_coap_response = true;
@@ -433,6 +444,25 @@ static golioth_status_t coap_io_loop_once(
     return GOLIOTH_OK;
 }
 
+static void on_keepalive(TimerHandle_t timer) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)pvTimerGetTimerID(timer);
+
+    ESP_LOGD(TAG, "keepalive");
+
+    // Send a dummy GET request to a non-existant path
+    golioth_coap_request_msg_t request_msg = {
+        .type = GOLIOTH_COAP_REQUEST_GET,
+        .observe = {
+            .path = ".d/aaa",
+            .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
+        },
+    };
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue keepalive request, queue full");
+    }
+}
+
 // Note: libcoap is not thread safe, so all rx/tx I/O for the session must be
 // done in this task.
 static void golioth_coap_client_task(void *arg) {
@@ -534,6 +564,24 @@ golioth_client_t golioth_client_create(const golioth_client_config_t* config) {
         goto error;
     }
 
+    new_client->keepalive_timer = xTimerCreate(
+            "keepalive",
+            max(1000, CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS) / portTICK_PERIOD_MS,
+            pdTRUE, // auto-reload
+            new_client, // pvTimerID
+            on_keepalive);
+    if (!new_client->keepalive_timer) {
+        ESP_LOGE(TAG, "Failed to create keepalive timer");
+        goto error;
+    }
+
+    if (CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS > 0) {
+        if (!xTimerStart(new_client->keepalive_timer, 0)) {
+            ESP_LOGE(TAG, "Failed to start keepalive timer");
+            goto error;
+        }
+    }
+
     return (golioth_client_t)new_client;
 
 error:
@@ -569,14 +617,17 @@ void golioth_client_destroy(golioth_client_t client) {
     if (!c) {
         return;
     }
-    if (c->run_sem) {
-        vSemaphoreDelete(c->run_sem);
+    if (c->keepalive_timer) {
+        xTimerDelete(c->keepalive_timer, 0);
+    }
+    if (c->coap_task_handle) {
+        vTaskDelete(c->coap_task_handle);
     }
     if (c->request_queue) {
         vQueueDelete(c->request_queue);
     }
-    if (c->coap_task_handle) {
-        vTaskDelete(c->coap_task_handle);
+    if (c->run_sem) {
+        vSemaphoreDelete(c->run_sem);
     }
     free(c);
     g_golioth_stats.total_freed_bytes += sizeof(golioth_coap_client_t);
