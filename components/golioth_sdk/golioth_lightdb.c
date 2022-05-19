@@ -209,7 +209,13 @@ golioth_status_t golioth_lightdb_get(
         const char* path,
         golioth_get_cb_fn callback,
         void* arg) {
-    return GOLIOTH_OK;
+    return golioth_coap_client_get_async(
+            client,
+            GOLIOTH_LIGHTDB_PATH_PREFIX,
+            path,
+            COAP_MEDIATYPE_APPLICATION_JSON,
+            callback,
+            arg);
 }
 
 golioth_status_t golioth_lightdb_observe(
@@ -219,8 +225,6 @@ golioth_status_t golioth_lightdb_observe(
         void* arg) {
     return GOLIOTH_OK;
 }
-
-
 
 int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size) {
     return strtol((const char*)payload, NULL, 10);

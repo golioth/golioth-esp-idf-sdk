@@ -7,6 +7,7 @@
 #include <freertos/timers.h>
 #include <coap3/coap.h> // COAP_MEDIATYPE_*
 #include "golioth_client.h"
+#include "golioth_lightdb.h"
 
 typedef struct {
     // The CoAP path string (everything after coaps://coap.golioth.io/).
@@ -28,6 +29,8 @@ typedef struct {
     const char* path_prefix;
     const char* path;
     uint32_t content_type;
+    golioth_get_cb_fn callback;
+    void* arg;
 } golioth_coap_get_params_t;
 
 typedef struct {
@@ -39,6 +42,8 @@ typedef struct {
     const char* path_prefix;
     const char* path;
     uint32_t content_type;
+    golioth_get_cb_fn callback;
+    void* arg;
 } golioth_coap_observe_params_t;
 
 typedef enum {
@@ -74,8 +79,8 @@ typedef struct {
     size_t psk_id_len;
     const char* psk;
     size_t psk_len;
+    golioth_coap_request_msg_t pending_req;
 } golioth_coap_client_t;
-
 
 golioth_status_t golioth_coap_client_set_async(
         golioth_client_t client,
@@ -89,6 +94,14 @@ golioth_status_t golioth_coap_client_delete_async(
         golioth_client_t client,
         const char* path_prefix,
         const char* path);
+
+golioth_status_t golioth_coap_client_get_async(
+        golioth_client_t client,
+        const char* path_prefix,
+        const char* path,
+        uint32_t content_type,
+        golioth_get_cb_fn callback,
+        void* arg);
 
 #if 0
 

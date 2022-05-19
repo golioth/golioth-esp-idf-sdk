@@ -32,21 +32,15 @@ static bool has_block2_option(const coap_pdu_t* received) {
     return false;
 }
 
-static void print_payload(const coap_pdu_t* received) {
+static void print_payload(const uint8_t* data, size_t len) {
     if (esp_log_level_get(TAG) < ESP_LOG_DEBUG) {
         return;
     }
 
-    const unsigned char *data = NULL;
-    size_t data_len = 0;
-    size_t offset = 0;
-    size_t total = 0;
-    if (coap_get_data_large(received, &data_len, &data, &offset, &total)) {
-        printf(": ");
-        while(data_len--) {
-            printf("%c", isprint(*data) ? *data : '.');
-            data++;
-        }
+    printf(": ");
+    while(len--) {
+        printf("%c", isprint(*data) ? *data : '.');
+        data++;
     }
     printf("\n");
 }
@@ -81,15 +75,35 @@ static coap_response_t coap_response_handler(
         }
     }
 
+    const uint8_t* data = NULL;
+    size_t data_len = 0;
+    size_t offset = 0;
+    size_t total = 0;
+    bool got_data = coap_get_data_large(received, &data_len, &data, &offset, &total);
+    if (!got_data) {
+        ESP_LOGW(TAG, "Failed to get data from response");
+        return COAP_RESPONSE_FAIL;
+    }
+
+    print_payload(data, data_len);
+
     if (token_matches_request(received, client)) {
-        // TODO - Handle request response
         client->got_coap_response = true;
+        if (client->pending_req.type == GOLIOTH_COAP_REQUEST_GET) {
+            if (client->pending_req.get.callback) {
+                client->pending_req.get.callback(
+                    client,
+                    client->pending_req.get.path,
+                    data,
+                    data_len,
+                    client->pending_req.get.arg);
+            }
+        }
     } else if (is_observation(received)) {
         // TODO - Handle observations
     } else if (has_block2_option(received)) {
         // TODO - Handle BLOCK2 option
     }
-    print_payload(received);
 
     return COAP_RESPONSE_OK;
 }
@@ -414,6 +428,7 @@ static golioth_status_t coap_io_loop_once(
 
     // If we get here, then a confirmable request has been sent to the server,
     // and we should wait for a response.
+    client->pending_req = request_msg;
     client->got_coap_response = false;
     int32_t time_spent_waiting_ms = 0;
     while (time_spent_waiting_ms < CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
@@ -723,6 +738,37 @@ golioth_status_t golioth_coap_client_delete_async(
         .delete = {
             .path_prefix = path_prefix,
             .path = path,
+        },
+    };
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        return GOLIOTH_ERR_QUEUE_FULL;
+    }
+
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_coap_client_get_async(
+        golioth_client_t client,
+        const char* path_prefix,
+        const char* path,
+        uint32_t content_type,
+        golioth_get_cb_fn callback,
+        void* arg) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return GOLIOTH_ERR_NULL;
+    }
+
+    golioth_coap_request_msg_t request_msg = {
+        .type = GOLIOTH_COAP_REQUEST_GET,
+        .get = {
+            .path_prefix = path_prefix,
+            .path = path,
+            .content_type = content_type,
+            .callback = callback,
+            .arg = arg,
         },
     };
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);

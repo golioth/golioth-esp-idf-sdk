@@ -4,6 +4,7 @@
 #include "golioth_client.h"
 
 typedef void (*golioth_get_cb_fn)(
+        golioth_client_t client,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,

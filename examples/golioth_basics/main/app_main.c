@@ -8,13 +8,17 @@
 
 #define TAG "golioth_basics"
 
-void on_ldb_iteration(const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
-    int32_t value = golioth_payload_as_int(payload, payload_size);
-    ESP_LOGI(TAG, "Got iteration value = %d", value);
+void on_float_value(golioth_client_t client, const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
+    float value = golioth_payload_as_float(payload, payload_size);
+    ESP_LOGI(TAG, "Got float_value = %f", value);
 }
 
-void on_ldb_desired(const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
-    // TODO - parse with cJSON
+void on_my_setting(golioth_client_t client, const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
+    int32_t* actual_value_ptr = (int32_t*)arg;
+    int32_t desired_value = golioth_payload_as_int(payload, payload_size);
+    ESP_LOGI(TAG, "Cloud desires my_setting = %d. Setting now.", desired_value);
+    *actual_value_ptr = desired_value;
+    golioth_lightdb_delete(client, path);
 }
 
 void app_main(void) {
@@ -32,21 +36,25 @@ void app_main(void) {
     golioth_client_t client = golioth_client_create(psk_id, psk);
     assert(client);
 
-    golioth_lightdb_observe(client, "desired", on_ldb_desired, NULL);
-
-    int iteration = 0;
+    int32_t iteration = 0;
     bool bool_toggle = false;
     float float_value = 1.234f;
     const char* string_value = "a string";
 
+    // The cloud can request to set the value of my_setting via path "desired/my_setting"
+    // If that happens, we will update the value and delete the path to indicate
+    // the desired setting was applied.
+    int32_t my_setting = 0;
+    golioth_lightdb_observe(client, "desired/my_setting", on_my_setting, &my_setting);
+
     while (1) {
         golioth_log_info(client, TAG, "This is a message");
         golioth_lightdb_set_int(client, "iteration", iteration);
+        golioth_lightdb_set_int(client, "my_setting", my_setting);
         golioth_lightdb_set_bool(client, "bool_toggle", bool_toggle);
         golioth_lightdb_set_float(client, "float_value", float_value);
         golioth_lightdb_set_string(client, "string_value", string_value, strlen(string_value));
-        golioth_lightdb_get(client, "iteration", on_ldb_iteration, NULL);
-        golioth_lightdb_delete(client, "delete_me");
+        golioth_lightdb_get(client, "float_value", on_float_value, NULL);
 
         iteration++;
         bool_toggle = !bool_toggle;
