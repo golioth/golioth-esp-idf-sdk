@@ -464,6 +464,9 @@ static void print_heap_usage(void) {
     uint32_t free_heap = xPortGetFreeHeapSize();
     uint32_t min_free_heap = xPortGetMinimumEverFreeHeapSize();
     ESP_LOGD(TAG, "Free heap = %u bytes, Min ever free heap = %u", free_heap, min_free_heap);
+
+    ESP_LOGD(TAG, "SDK alloc - free = %d",
+            g_golioth_stats.total_allocd_bytes - g_golioth_stats.total_freed_bytes);
 }
 
 // Note: libcoap is not thread safe, so all rx/tx I/O for the session must be
@@ -647,4 +650,55 @@ bool golioth_client_is_connected(golioth_client_t client) {
         return false;
     }
     return c->session_connected;
+}
+
+golioth_status_t golioth_coap_client_set_async(
+        golioth_client_t client,
+        const char* path,
+        uint32_t content_type,
+        const uint8_t* payload,
+        size_t payload_size) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return GOLIOTH_ERR_NULL;
+    }
+
+    ESP_LOGD(TAG, "PUT %s", path);
+
+    uint8_t* request_payload = NULL;
+    if (payload_size > 0) {
+        // We will allocate memory and copy the payload
+        // to avoid payload lifetime and thread-safety issues.
+        //
+        // This memory will be free'd by the CoAP task after handling the request,
+        // or in this function if we fail to enqueue the request.
+        request_payload = (uint8_t*)calloc(1, payload_size);
+        if (!request_payload) {
+            ESP_LOGE(TAG, "Payload alloc failure");
+            return GOLIOTH_ERR_MEM_ALLOC;
+        }
+        g_golioth_stats.total_allocd_bytes += payload_size;
+        memcpy(request_payload, payload, payload_size);
+    }
+
+    golioth_coap_request_msg_t request_msg = {
+        .type = GOLIOTH_COAP_REQUEST_PUT,
+        .put = {
+            .path = path,
+            .content_type = content_type,
+            .payload = request_payload,
+            .payload_size = payload_size,
+        },
+    };
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        if (payload_size > 0) {
+            free(request_payload);
+            g_golioth_stats.total_freed_bytes += payload_size;
+        }
+        return GOLIOTH_ERR_QUEUE_FULL;
+    }
+
+    return GOLIOTH_OK;
 }

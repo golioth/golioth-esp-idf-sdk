@@ -73,6 +73,14 @@ typedef struct {
 } golioth_coap_client_t;
 
 
+golioth_status_t golioth_coap_client_set_async(
+        golioth_client_t client,
+        const char* path,
+        uint32_t content_type,
+        const uint8_t* payload,
+        size_t payload_size);
+
+
 #if 0
 
 //
