@@ -79,12 +79,16 @@ typedef struct {
 
 golioth_status_t golioth_coap_client_set_async(
         golioth_client_t client,
-        const char* path_prefix, // can be NULL
+        const char* path_prefix,
         const char* path,
         uint32_t content_type,
         const uint8_t* payload,
         size_t payload_size);
 
+golioth_status_t golioth_coap_client_delete_async(
+        golioth_client_t client,
+        const char* path_prefix,
+        const char* path);
 
 #if 0
 

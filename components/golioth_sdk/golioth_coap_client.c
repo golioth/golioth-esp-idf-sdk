@@ -708,3 +708,28 @@ golioth_status_t golioth_coap_client_set_async(
 
     return GOLIOTH_OK;
 }
+
+golioth_status_t golioth_coap_client_delete_async(
+        golioth_client_t client,
+        const char* path_prefix,
+        const char* path) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return GOLIOTH_ERR_NULL;
+    }
+
+    golioth_coap_request_msg_t request_msg = {
+        .type = GOLIOTH_COAP_REQUEST_DELETE,
+        .delete = {
+            .path_prefix = path_prefix,
+            .path = path,
+        },
+    };
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        return GOLIOTH_ERR_QUEUE_FULL;
+    }
+
+    return GOLIOTH_OK;
+}

@@ -201,7 +201,7 @@ golioth_status_t golioth_lightdb_set_string(
 golioth_status_t golioth_lightdb_delete(
         golioth_client_t client,
         const char* path) {
-    return GOLIOTH_OK;
+    return golioth_coap_client_delete_async(client, GOLIOTH_LIGHTDB_PATH_PREFIX, path);
 }
 
 golioth_status_t golioth_lightdb_get(
