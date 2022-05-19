@@ -16,15 +16,38 @@
 static bool _initialized;
 golioth_stats_t g_golioth_stats;
 
+
 static bool token_matches_request(const coap_pdu_t* received, golioth_coap_client_t* client) {
     coap_bin_const_t rcvd_token = coap_pdu_get_token(received);
     bool len_matches = (rcvd_token.length == client->token_len);
     return (len_matches && (0 == memcmp(rcvd_token.s, client->token, client->token_len)));
 }
 
-static bool is_observation(const coap_pdu_t* received) {
-    // TODO
-    return false;
+static void notify_observers(
+        const coap_pdu_t* received,
+        golioth_coap_client_t* client,
+        const uint8_t* data,
+        size_t data_len) {
+    // scan observations, check for token match
+    for (int i = 0; i < CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS; i++) {
+        const golioth_coap_observe_info_t* obs_info = &client->observations[i];
+        golioth_get_cb_fn callback = obs_info->req_params.callback;
+
+        if (!obs_info->in_use || !callback) {
+            continue;
+        }
+
+        coap_bin_const_t rcvd_token = coap_pdu_get_token(received);
+        bool len_matches = (rcvd_token.length == obs_info->token_len);
+        if (len_matches && (0 == memcmp(rcvd_token.s, obs_info->token, obs_info->token_len))) {
+            callback(
+                client,
+                obs_info->req_params.path,
+                data,
+                data_len,
+                obs_info->req_params.arg);
+        }
+    }
 }
 
 static bool has_block2_option(const coap_pdu_t* received) {
@@ -54,12 +77,14 @@ static coap_response_t coap_response_handler(
     coap_pdu_type_t rcv_type = coap_pdu_get_type(received);
     ESP_LOGD(TAG, "%d.%02d", (rcvd_code >> 5), rcvd_code & 0x1F);
 
+#if 0
     // If we didn't send anything, and we got some kind of request, send RST
     // to indicate we can't handle the request.
     if (!sent && (rcv_type == COAP_MESSAGE_CON || rcv_type == COAP_MESSAGE_NON)) {
         ESP_LOGW(TAG, "Got unexpected request. Sending RST.");
         return COAP_RESPONSE_FAIL;
     }
+#endif
 
     if (rcv_type == COAP_MESSAGE_RST) {
         ESP_LOGW(TAG, "Got RST");
@@ -99,11 +124,11 @@ static coap_response_t coap_response_handler(
                     client->pending_req.get.arg);
             }
         }
-    } else if (is_observation(received)) {
-        // TODO - Handle observations
     } else if (has_block2_option(received)) {
         // TODO - Handle BLOCK2 option
     }
+
+    notify_observers(received, client, data, data_len);
 
     return COAP_RESPONSE_OK;
 }
@@ -223,7 +248,9 @@ static void golioth_coap_add_token(coap_pdu_t* request, coap_session_t* session)
 }
 
 static void golioth_coap_add_path(coap_pdu_t* request, const char* path_prefix, const char* path) {
-    assert(path_prefix);
+    if (!path_prefix) {
+        path_prefix = "";
+    }
     assert(path);
 
     char fullpath[64] = {};
@@ -288,7 +315,33 @@ static void golioth_coap_delete(const golioth_coap_delete_params_t* params, coap
     coap_send(session, request);
 }
 
-static void golioth_coap_observe(const golioth_coap_observe_params_t* params, coap_session_t* session) {
+static void add_observation(golioth_coap_client_t* client, const golioth_coap_observe_params_t* params) {
+    // scan for available (not used) observation slot
+    golioth_coap_observe_info_t* obs_info = NULL;
+    bool found_slot = false;
+    for (int i = 0; i < CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS; i++) {
+        obs_info = &client->observations[i];
+        if (!obs_info->in_use) {
+            found_slot = true;
+            break;
+        }
+    }
+
+    if (!found_slot) {
+        ESP_LOGE(TAG, "Unable to observe path %s, no slots available", params->path);
+        return;
+    }
+
+    obs_info->in_use = true;
+    obs_info->req_params = *params;
+    memcpy(obs_info->token, client->token, client->token_len);
+    obs_info->token_len = client->token_len;
+}
+
+static void golioth_coap_observe(
+        golioth_coap_client_t* client,
+        const golioth_coap_observe_params_t* params,
+        coap_session_t* session) {
     // GET with an OBSERVE option
     coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_GET, session);
     if (!request) {
@@ -309,6 +362,7 @@ static void golioth_coap_observe(const golioth_coap_observe_params_t* params, co
     golioth_coap_add_content_type(request, params->content_type);
 
     coap_send(session, request);
+    add_observation(client, params);
 }
 
 static golioth_status_t create_context(golioth_coap_client_t* client, coap_context_t** context) {
@@ -415,7 +469,7 @@ static golioth_status_t coap_io_loop_once(
             break;
         case GOLIOTH_COAP_REQUEST_OBSERVE:
             ESP_LOGD(TAG, "Handle OBSERVE %s", request_msg.observe.path);
-            golioth_coap_observe(&request_msg.observe, session);
+            golioth_coap_observe(client, &request_msg.observe, session);
             break;
         default:
             ESP_LOGW(TAG, "Unknown request_msg type: %u", request_msg.type);
@@ -470,7 +524,7 @@ static void on_keepalive(TimerHandle_t timer) {
     // Send a dummy GET request to a non-existant path
     golioth_coap_request_msg_t request_msg = {
         .type = GOLIOTH_COAP_REQUEST_GET,
-        .observe = {
+        .get = {
             .path = ".d/aaa",
             .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
         },
@@ -764,6 +818,38 @@ golioth_status_t golioth_coap_client_get_async(
     golioth_coap_request_msg_t request_msg = {
         .type = GOLIOTH_COAP_REQUEST_GET,
         .get = {
+            .path_prefix = path_prefix,
+            .path = path,
+            .content_type = content_type,
+            .callback = callback,
+            .arg = arg,
+        },
+    };
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        return GOLIOTH_ERR_QUEUE_FULL;
+    }
+
+    return GOLIOTH_OK;
+}
+
+golioth_status_t golioth_coap_client_observe_async(
+        golioth_client_t client,
+        const char* path_prefix,
+        const char* path,
+        uint32_t content_type,
+        golioth_get_cb_fn callback,
+        void* arg) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return GOLIOTH_ERR_NULL;
+    }
+
+
+    golioth_coap_request_msg_t request_msg = {
+        .type = GOLIOTH_COAP_REQUEST_OBSERVE,
+        .observe = {
             .path_prefix = path_prefix,
             .path = path,
             .content_type = content_type,

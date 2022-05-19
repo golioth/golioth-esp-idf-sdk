@@ -52,4 +52,10 @@ config GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS
         against NAT and server timeouts.
         Set to 0 to disable.
 
+config GOLIOTH_MAX_NUM_OBSERVATIONS
+    int "Golioth CoAP maximum number observations"
+    default 8
+    help
+        The maximum number of CoAP paths which can be simultaneously observed.
+
 endmenu

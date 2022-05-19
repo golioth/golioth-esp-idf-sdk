@@ -7,122 +7,6 @@
 
 #define GOLIOTH_LIGHTDB_PATH_PREFIX ".d/"
 
-#if 0
-
-// TODO - The implementations here are not lightdb specific.
-// It might be better to put this code in a file named golioth_coap_async.c,
-// so it can be used across the higher-level services (like log, lightdb, etc).
-
-golioth_status_t golioth_lightdb_observe(golioth_client_t client, const char* path) {
-    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
-    if (!c) {
-        return GOLIOTH_ERR_NULL;
-    }
-
-    ESP_LOGD(TAG, "OBSERVE \"%s\"", path);
-    golioth_coap_request_msg_t request_msg = {
-        .type = GOLIOTH_COAP_REQUEST_OBSERVE,
-        .observe = {
-            .path = path,
-            .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
-        },
-    };
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
-    if (!sent) {
-        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
-        return GOLIOTH_ERR_QUEUE_FULL;
-    }
-
-    return GOLIOTH_OK;
-}
-
-golioth_status_t golioth_lightdb_set(
-        golioth_client_t client,
-        const char* path,
-        const uint8_t* payload,
-        size_t payload_size) {
-    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
-    if (!c) {
-        return GOLIOTH_ERR_NULL;
-    }
-
-    ESP_LOGD(TAG, "PUT \"%s\"", path);
-
-    // Memory will be free'd by the client task after being handled
-    uint8_t* payload_copy = (uint8_t*)calloc(1, payload_size);
-    if (!payload_copy) {
-        ESP_LOGE(TAG, "Payload alloc failure");
-        return GOLIOTH_ERR_MEM_ALLOC;
-    }
-    g_golioth_stats.total_allocd_bytes += payload_size;
-
-    memcpy(payload_copy, payload, payload_size);
-
-    golioth_coap_request_msg_t request_msg = {
-        .type = GOLIOTH_COAP_REQUEST_PUT,
-        .put = {
-            .path = path,
-            .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
-            .payload = payload_copy,
-            .payload_size = payload_size,
-        },
-    };
-
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
-    if (!sent) {
-        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
-        return GOLIOTH_ERR_QUEUE_FULL;
-    }
-
-    return GOLIOTH_OK;
-}
-
-golioth_status_t golioth_lightdb_get(golioth_client_t client, const char* path) {
-    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
-    if (!c) {
-        return GOLIOTH_ERR_NULL;
-    }
-
-    ESP_LOGD(TAG, "GET \"%s\"", path);
-    golioth_coap_request_msg_t request_msg = {
-        .type = GOLIOTH_COAP_REQUEST_GET,
-        .observe = {
-            .path = path,
-            .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
-        },
-    };
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
-    if (!sent) {
-        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
-        return GOLIOTH_ERR_QUEUE_FULL;
-    }
-
-    return GOLIOTH_OK;
-}
-
-golioth_status_t golioth_lightdb_delete(golioth_client_t client, const char* path) {
-    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
-    if (!c) {
-        return GOLIOTH_ERR_NULL;
-    }
-
-    golioth_coap_request_msg_t request_msg = {
-        .type = GOLIOTH_COAP_REQUEST_DELETE,
-        .delete = {
-            .path = path,
-        },
-    };
-
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
-    if (!sent) {
-        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
-        return GOLIOTH_ERR_QUEUE_FULL;
-    }
-
-    return GOLIOTH_OK;
-}
-#endif
-
 golioth_status_t golioth_lightdb_set_int(
         golioth_client_t client,
         const char* path,
@@ -223,7 +107,13 @@ golioth_status_t golioth_lightdb_observe(
         const char* path,
         golioth_get_cb_fn callback,
         void* arg) {
-    return GOLIOTH_OK;
+    return golioth_coap_client_observe_async(
+            client,
+            GOLIOTH_LIGHTDB_PATH_PREFIX,
+            path,
+            COAP_MEDIATYPE_APPLICATION_JSON,
+            callback,
+            arg);
 }
 
 int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size) {
@@ -232,4 +122,16 @@ int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size) {
 
 float golioth_payload_as_float(const uint8_t* payload, size_t payload_size) {
     return strtof((const char*)payload, NULL);
+}
+
+bool golioth_payload_is_null(const uint8_t* payload, size_t payload_size) {
+    if (!payload || payload_size == 0) {
+        return true;
+    }
+    if (payload_size >= 4) {
+        if (strncmp((const char*)payload, "null", 4) == 0) {
+            return true;
+        }
+    }
+    return false;
 }

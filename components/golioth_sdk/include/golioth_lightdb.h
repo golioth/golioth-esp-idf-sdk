@@ -11,8 +11,10 @@ typedef void (*golioth_get_cb_fn)(
         void* arg);
 
 // Deserialization
+// TODO - find a better home for these?
 int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size);
 float golioth_payload_as_float(const uint8_t* payload, size_t payload_size);
+bool golioth_payload_is_null(const uint8_t* payload, size_t payload_size);
 
 // Async API
 golioth_status_t golioth_lightdb_set_int(
@@ -45,5 +47,3 @@ golioth_status_t golioth_lightdb_observe(
         const char* path,
         golioth_get_cb_fn callback,
         void* arg);
-
-// TODO - Sync API

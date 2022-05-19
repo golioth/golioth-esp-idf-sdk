@@ -14,6 +14,11 @@ void on_float_value(golioth_client_t client, const char* path, const uint8_t* pa
 }
 
 void on_my_setting(golioth_client_t client, const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
+    // Payload might be null if desired/my_setting is deleted, so ignore that case
+    if (golioth_payload_is_null(payload, payload_size)) {
+        return;
+    }
+
     int32_t* actual_value_ptr = (int32_t*)arg;
     int32_t desired_value = golioth_payload_as_int(payload, payload_size);
     ESP_LOGI(TAG, "Cloud desires my_setting = %d. Setting now.", desired_value);
