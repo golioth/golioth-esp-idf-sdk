@@ -11,6 +11,7 @@
 typedef struct {
     // The CoAP path string (everything after coaps://coap.golioth.io/).
     // Assumption: path is a string literal (i.e. we don't need to strcpy).
+    const char* path_prefix;
     const char* path;
     // Must be one of:
     //   COAP_MEDIATYPE_APPLICATION_JSON
@@ -24,15 +25,18 @@ typedef struct {
 } golioth_coap_put_params_t;
 
 typedef struct {
+    const char* path_prefix;
     const char* path;
     uint32_t content_type;
 } golioth_coap_get_params_t;
 
 typedef struct {
+    const char* path_prefix;
     const char* path;
 } golioth_coap_delete_params_t;
 
 typedef struct {
+    const char* path_prefix;
     const char* path;
     uint32_t content_type;
 } golioth_coap_observe_params_t;
@@ -75,6 +79,7 @@ typedef struct {
 
 golioth_status_t golioth_coap_client_set_async(
         golioth_client_t client,
+        const char* path_prefix, // can be NULL
         const char* path,
         uint32_t content_type,
         const uint8_t* payload,

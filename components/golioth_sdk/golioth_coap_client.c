@@ -208,12 +208,18 @@ static void golioth_coap_add_token(coap_pdu_t* request, coap_session_t* session)
     coap_add_token(request, client->token_len, client->token);
 }
 
-static void golioth_coap_add_path(coap_pdu_t* request, const char* path) {
-    size_t pathlen = strlen(path);
+static void golioth_coap_add_path(coap_pdu_t* request, const char* path_prefix, const char* path) {
+    assert(path_prefix);
+    assert(path);
+
+    char fullpath[64] = {};
+    snprintf(fullpath, sizeof(fullpath), "%s%s", path_prefix, path);
+
+    size_t fullpathlen = strlen(fullpath);
     unsigned char buf[64];
     unsigned char *pbuf = buf;
     size_t buflen = sizeof(buf);
-    int nsegments = coap_split_path((const uint8_t*)path, pathlen, pbuf, &buflen);
+    int nsegments = coap_split_path((const uint8_t*)fullpath, fullpathlen, pbuf, &buflen);
     while (nsegments--) {
         coap_add_option(request, COAP_OPTION_URI_PATH, coap_opt_length(pbuf), coap_opt_value(pbuf));
         pbuf += coap_opt_size(pbuf);
@@ -237,7 +243,7 @@ static void golioth_coap_get(const golioth_coap_get_params_t* params, coap_sessi
     }
 
     golioth_coap_add_token(request, session);
-    golioth_coap_add_path(request, params->path);
+    golioth_coap_add_path(request, params->path_prefix, params->path);
     golioth_coap_add_content_type(request, params->content_type);
     coap_send(session, request);
 }
@@ -250,7 +256,7 @@ static void golioth_coap_put(const golioth_coap_put_params_t* params, coap_sessi
     }
 
     golioth_coap_add_token(request, session);
-    golioth_coap_add_path(request, params->path);
+    golioth_coap_add_path(request, params->path_prefix, params->path);
     golioth_coap_add_content_type(request, params->content_type);
     coap_add_data(request, params->payload_size, (unsigned char*)params->payload);
     coap_send(session, request);
@@ -264,7 +270,7 @@ static void golioth_coap_delete(const golioth_coap_delete_params_t* params, coap
     }
 
     golioth_coap_add_token(request, session);
-    golioth_coap_add_path(request, params->path);
+    golioth_coap_add_path(request, params->path_prefix, params->path);
     coap_send(session, request);
 }
 
@@ -285,7 +291,7 @@ static void golioth_coap_observe(const golioth_coap_observe_params_t* params, co
             coap_encode_var_safe(optbuf, sizeof(optbuf), COAP_OBSERVE_ESTABLISH),
             optbuf);
 
-    golioth_coap_add_path(request, params->path);
+    golioth_coap_add_path(request, params->path_prefix, params->path);
     golioth_coap_add_content_type(request, params->content_type);
 
     coap_send(session, request);
@@ -654,6 +660,7 @@ bool golioth_client_is_connected(golioth_client_t client) {
 
 golioth_status_t golioth_coap_client_set_async(
         golioth_client_t client,
+        const char* path_prefix,
         const char* path,
         uint32_t content_type,
         const uint8_t* payload,
@@ -662,8 +669,6 @@ golioth_status_t golioth_coap_client_set_async(
     if (!c) {
         return GOLIOTH_ERR_NULL;
     }
-
-    ESP_LOGD(TAG, "PUT %s", path);
 
     uint8_t* request_payload = NULL;
     if (payload_size > 0) {
@@ -684,6 +689,7 @@ golioth_status_t golioth_coap_client_set_async(
     golioth_coap_request_msg_t request_msg = {
         .type = GOLIOTH_COAP_REQUEST_PUT,
         .put = {
+            .path_prefix = path_prefix,
             .path = path,
             .content_type = content_type,
             .payload = request_payload,

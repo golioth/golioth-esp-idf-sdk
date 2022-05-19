@@ -49,6 +49,7 @@ golioth_status_t golioth_log(golioth_client_t client, golioth_log_level_t level,
     size_t msg_len = strnlen(logbuf, CONFIG_GOLIOTH_LOG_MAX_MESSAGE_LEN);
     return golioth_coap_client_set_async(
             client,
+            "", // path-prefix unused
             "logs",
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)logbuf,
