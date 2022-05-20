@@ -61,6 +61,7 @@ typedef struct {
         golioth_coap_delete_params_t delete;
         golioth_coap_observe_params_t observe;
     };
+    SemaphoreHandle_t request_complete_sem;
 } golioth_coap_request_msg_t;
 
 typedef struct {
@@ -90,26 +91,29 @@ typedef struct {
     golioth_coap_observe_info_t observations[CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS];
 } golioth_coap_client_t;
 
-golioth_status_t golioth_coap_client_set_async(
+golioth_status_t golioth_coap_client_set(
         golioth_client_t client,
         const char* path_prefix,
         const char* path,
         uint32_t content_type,
         const uint8_t* payload,
-        size_t payload_size);
+        size_t payload_size,
+        bool is_synchronous);
 
-golioth_status_t golioth_coap_client_delete_async(
+golioth_status_t golioth_coap_client_delete(
         golioth_client_t client,
         const char* path_prefix,
-        const char* path);
+        const char* path,
+        bool is_synchronous);
 
-golioth_status_t golioth_coap_client_get_async(
+golioth_status_t golioth_coap_client_get(
         golioth_client_t client,
         const char* path_prefix,
         const char* path,
         uint32_t content_type,
         golioth_get_cb_fn callback,
-        void* arg);
+        void* arg,
+        bool is_synchronous);
 
 golioth_status_t golioth_coap_client_observe_async(
         golioth_client_t client,

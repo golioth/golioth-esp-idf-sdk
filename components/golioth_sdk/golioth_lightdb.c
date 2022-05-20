@@ -13,13 +13,14 @@ golioth_status_t golioth_lightdb_set_int(
         int32_t value) {
     char buf[16] = {};
     snprintf(buf, sizeof(buf), "%d", value);
-    return golioth_coap_client_set_async(
+    return golioth_coap_client_set(
             client,
             GOLIOTH_LIGHTDB_PATH_PREFIX,
             path,
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
-            strlen(buf));
+            strlen(buf),
+            false); // TODO
 }
 
 golioth_status_t golioth_lightdb_set_bool(
@@ -27,13 +28,14 @@ golioth_status_t golioth_lightdb_set_bool(
         const char* path,
         bool value) {
     const char* valuestr = (value ? "true" : "false");
-    return golioth_coap_client_set_async(
+    return golioth_coap_client_set(
             client,
             GOLIOTH_LIGHTDB_PATH_PREFIX,
             path,
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)valuestr,
-            strlen(valuestr));
+            strlen(valuestr),
+            false); // TODO
 }
 
 golioth_status_t golioth_lightdb_set_float(
@@ -42,13 +44,14 @@ golioth_status_t golioth_lightdb_set_float(
         float value) {
     char buf[32] = {};
     snprintf(buf, sizeof(buf), "%f", value);
-    return golioth_coap_client_set_async(
+    return golioth_coap_client_set(
             client,
             GOLIOTH_LIGHTDB_PATH_PREFIX,
             path,
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
-            strlen(buf));
+            strlen(buf),
+            false); // TODO
 }
 
 golioth_status_t golioth_lightdb_set_string(
@@ -70,13 +73,14 @@ golioth_status_t golioth_lightdb_set_string(
     }
     snprintf(buf, bufsize, "\"%s\"", str);
 
-    golioth_status_t status = golioth_coap_client_set_async(
+    golioth_status_t status = golioth_coap_client_set(
             client,
             GOLIOTH_LIGHTDB_PATH_PREFIX,
             path,
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
-            bufsize - 1); // exluding NULL
+            bufsize - 1, // exluding NULL
+            false); // TODO
 
     free(buf);
     return status;
@@ -85,7 +89,7 @@ golioth_status_t golioth_lightdb_set_string(
 golioth_status_t golioth_lightdb_delete(
         golioth_client_t client,
         const char* path) {
-    return golioth_coap_client_delete_async(client, GOLIOTH_LIGHTDB_PATH_PREFIX, path);
+    return golioth_coap_client_delete(client, GOLIOTH_LIGHTDB_PATH_PREFIX, path, false); // TODO
 }
 
 golioth_status_t golioth_lightdb_get(
@@ -93,13 +97,14 @@ golioth_status_t golioth_lightdb_get(
         const char* path,
         golioth_get_cb_fn callback,
         void* arg) {
-    return golioth_coap_client_get_async(
+    return golioth_coap_client_get(
             client,
             GOLIOTH_LIGHTDB_PATH_PREFIX,
             path,
             COAP_MEDIATYPE_APPLICATION_JSON,
             callback,
-            arg);
+            arg,
+            false); // TODO
 }
 
 golioth_status_t golioth_lightdb_observe(
@@ -121,13 +126,14 @@ golioth_status_t golioth_lightdb_set_json(
         const char* path,
         const char* json_str,
         size_t json_str_len) {
-    return golioth_coap_client_set_async(
+    return golioth_coap_client_set(
             client,
             GOLIOTH_LIGHTDB_PATH_PREFIX,
             path,
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)json_str,
-            json_str_len);
+            json_str_len,
+            false); // TODO
 }
 
 int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size) {

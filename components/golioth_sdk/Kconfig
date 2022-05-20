@@ -23,7 +23,7 @@ config GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS
 
 config GOLIOTH_COAP_REQUEST_QUEUE_MAX_ITEMS
     int "CoAP request queue max num items"
-    default 10
+    default 20
     help
         The size, in items, of the CoAP task request queue.
         If the queue is full, any attempts to queue new messages

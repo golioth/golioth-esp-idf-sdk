@@ -480,11 +480,13 @@ static golioth_status_t coap_io_loop_once(
         return GOLIOTH_OK;
     }
 
+
     // If we get here, then a confirmable request has been sent to the server,
     // and we should wait for a response.
     client->pending_req = request_msg;
     client->got_coap_response = false;
     int32_t time_spent_waiting_ms = 0;
+    bool io_error = false;
     while (time_spent_waiting_ms < CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
         int32_t remaining_ms = CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS - time_spent_waiting_ms;
         int32_t wait_ms = min(1000, remaining_ms);
@@ -492,8 +494,8 @@ static golioth_status_t coap_io_loop_once(
         int32_t num_ms = coap_io_process(context, wait_ms);
         ESP_LOGD(TAG, "Response wait io process end");
         if (num_ms < 0) {
-            ESP_LOGE(TAG, "Error in coap_io_process: %d", num_ms);
-            return GOLIOTH_ERR_IO;
+            io_error = true;
+            break;
         } else if (client->got_coap_response) {
             ESP_LOGD(TAG, "Received response in %d ms", num_ms);
             break;
@@ -504,6 +506,15 @@ static golioth_status_t coap_io_loop_once(
             // Since we haven't received the response yet, just keep waiting.
             time_spent_waiting_ms += num_ms;
         }
+    }
+
+    if (request_msg.request_complete_sem) {
+        xSemaphoreGive(request_msg.request_complete_sem);
+    }
+
+    if (io_error) {
+        ESP_LOGE(TAG, "Error in coap_io_process");
+        return GOLIOTH_ERR_IO;
     }
 
     if (time_spent_waiting_ms >= CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
@@ -727,19 +738,23 @@ bool golioth_client_is_connected(golioth_client_t client) {
     return c->session_connected;
 }
 
-golioth_status_t golioth_coap_client_set_async(
+golioth_status_t golioth_coap_client_set(
         golioth_client_t client,
         const char* path_prefix,
         const char* path,
         uint32_t content_type,
         const uint8_t* payload,
-        size_t payload_size) {
+        size_t payload_size,
+        bool is_synchronous) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
         return GOLIOTH_ERR_NULL;
     }
 
+    golioth_status_t ret = GOLIOTH_OK;
+    SemaphoreHandle_t request_complete_sem = NULL;
     uint8_t* request_payload = NULL;
+
     if (payload_size > 0) {
         // We will allocate memory and copy the payload
         // to avoid payload lifetime and thread-safety issues.
@@ -749,10 +764,20 @@ golioth_status_t golioth_coap_client_set_async(
         request_payload = (uint8_t*)calloc(1, payload_size);
         if (!request_payload) {
             ESP_LOGE(TAG, "Payload alloc failure");
-            return GOLIOTH_ERR_MEM_ALLOC;
+            ret = GOLIOTH_ERR_MEM_ALLOC;
+            goto cleanup;
         }
         g_golioth_stats.total_allocd_bytes += payload_size;
         memcpy(request_payload, payload, payload_size);
+    }
+
+    if (is_synchronous) {
+        request_complete_sem = xSemaphoreCreateBinary();
+        if (!request_complete_sem) {
+            ESP_LOGE(TAG, "Failed to create request_complete semaphore");
+            ret = GOLIOTH_ERR_MEM_ALLOC;
+            goto cleanup;
+        }
     }
 
     golioth_coap_request_msg_t request_msg = {
@@ -764,27 +789,51 @@ golioth_status_t golioth_coap_client_set_async(
             .payload = request_payload,
             .payload_size = payload_size,
         },
+        .request_complete_sem = request_complete_sem,
     };
+
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
         ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        ret = GOLIOTH_ERR_QUEUE_FULL;
+        goto cleanup;
+    }
+
+    if (is_synchronous) {
+        xSemaphoreTake(request_complete_sem, portMAX_DELAY);
+    }
+
+cleanup:
+    if (request_complete_sem) {
+        vSemaphoreDelete(request_complete_sem);
+    }
+    if (ret != GOLIOTH_OK) {
+        // Failed to enqueue, free the payload copy
         if (payload_size > 0) {
             free(request_payload);
             g_golioth_stats.total_freed_bytes += payload_size;
         }
-        return GOLIOTH_ERR_QUEUE_FULL;
     }
-
-    return GOLIOTH_OK;
+    return ret;
 }
 
-golioth_status_t golioth_coap_client_delete_async(
+golioth_status_t golioth_coap_client_delete(
         golioth_client_t client,
         const char* path_prefix,
-        const char* path) {
+        const char* path,
+        bool is_synchronous) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
         return GOLIOTH_ERR_NULL;
+    }
+
+    SemaphoreHandle_t request_complete_sem = NULL;
+    if (is_synchronous) {
+        request_complete_sem = xSemaphoreCreateBinary();
+        if (!request_complete_sem) {
+            ESP_LOGE(TAG, "Failed to create request_complete semaphore");
+            return GOLIOTH_ERR_MEM_ALLOC;
+        }
     }
 
     golioth_coap_request_msg_t request_msg = {
@@ -793,26 +842,48 @@ golioth_status_t golioth_coap_client_delete_async(
             .path_prefix = path_prefix,
             .path = path,
         },
+        .request_complete_sem = request_complete_sem,
     };
+
+    golioth_status_t ret = GOLIOTH_OK;
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
-        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
-        return GOLIOTH_ERR_QUEUE_FULL;
+        ESP_LOGE(TAG, "Failed to enqueue request, queue full");
+        ret = GOLIOTH_ERR_QUEUE_FULL;
+        goto cleanup;
     }
 
-    return GOLIOTH_OK;
+    if (is_synchronous) {
+        xSemaphoreTake(request_complete_sem, portMAX_DELAY);
+    }
+
+cleanup:
+    if (request_complete_sem) {
+        vSemaphoreDelete(request_complete_sem);
+    }
+    return ret;
 }
 
-golioth_status_t golioth_coap_client_get_async(
+golioth_status_t golioth_coap_client_get(
         golioth_client_t client,
         const char* path_prefix,
         const char* path,
         uint32_t content_type,
         golioth_get_cb_fn callback,
-        void* arg) {
+        void* arg,
+        bool is_synchronous) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
         return GOLIOTH_ERR_NULL;
+    }
+
+    SemaphoreHandle_t request_complete_sem = NULL;
+    if (is_synchronous) {
+        request_complete_sem = xSemaphoreCreateBinary();
+        if (!request_complete_sem) {
+            ESP_LOGE(TAG, "Failed to create request_complete semaphore");
+            return GOLIOTH_ERR_MEM_ALLOC;
+        }
     }
 
     golioth_coap_request_msg_t request_msg = {
@@ -824,14 +895,26 @@ golioth_status_t golioth_coap_client_get_async(
             .callback = callback,
             .arg = arg,
         },
+        .request_complete_sem = request_complete_sem,
     };
+
+    golioth_status_t ret = GOLIOTH_OK;
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
-        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
-        return GOLIOTH_ERR_QUEUE_FULL;
+        ESP_LOGE(TAG, "Failed to enqueue request, queue full");
+        ret = GOLIOTH_ERR_QUEUE_FULL;
+        goto cleanup;
     }
 
-    return GOLIOTH_OK;
+    if (is_synchronous) {
+        xSemaphoreTake(request_complete_sem, portMAX_DELAY);
+    }
+
+cleanup:
+    if (request_complete_sem) {
+        vSemaphoreDelete(request_complete_sem);
+    }
+    return ret;
 }
 
 golioth_status_t golioth_coap_client_observe_async(
@@ -845,7 +928,6 @@ golioth_status_t golioth_coap_client_observe_async(
     if (!c) {
         return GOLIOTH_ERR_NULL;
     }
-
 
     golioth_coap_request_msg_t request_msg = {
         .type = GOLIOTH_COAP_REQUEST_OBSERVE,

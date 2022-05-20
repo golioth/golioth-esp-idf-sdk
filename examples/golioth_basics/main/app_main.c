@@ -84,6 +84,11 @@ void app_main(void) {
     golioth_lightdb_observe(client, "desired/my_setting", on_my_setting, &my_setting);
 
     while (1) {
+        // Synchronous API (blocks until server responds or times out)
+        ESP_LOGI(TAG, "Start of synchronous example");
+        golioth_log_info_sync(client, TAG, "This is a synchronous message");
+        ESP_LOGI(TAG, "End of synchronous example");
+
         // Asynchronous API (non-blocking, doesn't wait for server response)
         golioth_log_info(client, TAG, "This is a message");
         golioth_lightdb_set_int(client, "iteration", iteration);
