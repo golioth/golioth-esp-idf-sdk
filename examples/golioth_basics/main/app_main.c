@@ -87,6 +87,14 @@ void app_main(void) {
         // Synchronous API (blocks until server responds or times out)
         ESP_LOGI(TAG, "Start of synchronous example");
         golioth_log_info_sync(client, TAG, "This is a synchronous message");
+        int32_t read_iteration = 0;
+        if (GOLIOTH_OK == golioth_lightdb_get_int_sync(client, "iteration", &read_iteration)) {
+            ESP_LOGI(TAG, "Sync read iteration = %d", read_iteration);
+        }
+        char read_string_value[16] = {};
+        if (GOLIOTH_OK == golioth_lightdb_get_string_sync(client, "string_value", read_string_value, sizeof(read_string_value))) {
+            ESP_LOGI(TAG, "Sync read string_value = %s", read_string_value);
+        }
         ESP_LOGI(TAG, "End of synchronous example");
 
         // Asynchronous API (non-blocking, doesn't wait for server response)
