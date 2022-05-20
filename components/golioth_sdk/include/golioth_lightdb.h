@@ -34,6 +34,11 @@ golioth_status_t golioth_lightdb_set_string(
         const char* path,
         const char* str,
         size_t str_len);
+golioth_status_t golioth_lightdb_set_json(
+        golioth_client_t client,
+        const char* path,
+        const char* json_str,
+        size_t json_str_len);
 golioth_status_t golioth_lightdb_delete(
         golioth_client_t client,
         const char* path);

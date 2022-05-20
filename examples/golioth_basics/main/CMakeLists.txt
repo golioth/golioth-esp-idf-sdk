@@ -5,4 +5,5 @@ idf_component_register(
         "golioth_sdk"
         "nvs_flash"
         "protocol_examples_common"
+        "json"
 )

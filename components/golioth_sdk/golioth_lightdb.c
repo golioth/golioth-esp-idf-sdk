@@ -116,6 +116,20 @@ golioth_status_t golioth_lightdb_observe(
             arg);
 }
 
+golioth_status_t golioth_lightdb_set_json(
+        golioth_client_t client,
+        const char* path,
+        const char* json_str,
+        size_t json_str_len) {
+    return golioth_coap_client_set_async(
+            client,
+            GOLIOTH_LIGHTDB_PATH_PREFIX,
+            path,
+            COAP_MEDIATYPE_APPLICATION_JSON,
+            (const uint8_t*)json_str,
+            json_str_len);
+}
+
 int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size) {
     return strtol((const char*)payload, NULL, 10);
 }

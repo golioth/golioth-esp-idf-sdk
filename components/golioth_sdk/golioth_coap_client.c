@@ -765,7 +765,7 @@ golioth_status_t golioth_coap_client_set_async(
             .payload_size = payload_size,
         },
     };
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
         ESP_LOGW(TAG, "Failed to enqueue request, queue full");
         if (payload_size > 0) {
@@ -794,7 +794,7 @@ golioth_status_t golioth_coap_client_delete_async(
             .path = path,
         },
     };
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
         ESP_LOGW(TAG, "Failed to enqueue request, queue full");
         return GOLIOTH_ERR_QUEUE_FULL;
@@ -825,7 +825,7 @@ golioth_status_t golioth_coap_client_get_async(
             .arg = arg,
         },
     };
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
         ESP_LOGW(TAG, "Failed to enqueue request, queue full");
         return GOLIOTH_ERR_QUEUE_FULL;
@@ -857,7 +857,7 @@ golioth_status_t golioth_coap_client_observe_async(
             .arg = arg,
         },
     };
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, portMAX_DELAY);
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
         ESP_LOGW(TAG, "Failed to enqueue request, queue full");
         return GOLIOTH_ERR_QUEUE_FULL;
