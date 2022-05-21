@@ -52,11 +52,6 @@ static void notify_observers(
     }
 }
 
-static bool has_block2_option(const coap_pdu_t* received) {
-    // TODO
-    return false;
-}
-
 static void print_payload(const uint8_t* data, size_t len) {
     if (esp_log_level_get(TAG) < ESP_LOG_DEBUG) {
         return;
@@ -78,15 +73,6 @@ static coap_response_t coap_response_handler(
     coap_pdu_code_t rcvd_code = coap_pdu_get_code(received);
     coap_pdu_type_t rcv_type = coap_pdu_get_type(received);
     ESP_LOGD(TAG, "%d.%02d", (rcvd_code >> 5), rcvd_code & 0x1F);
-
-#if 0
-    // If we didn't send anything, and we got some kind of request, send RST
-    // to indicate we can't handle the request.
-    if (!sent && (rcv_type == COAP_MESSAGE_CON || rcv_type == COAP_MESSAGE_NON)) {
-        ESP_LOGW(TAG, "Got unexpected request. Sending RST.");
-        return COAP_RESPONSE_FAIL;
-    }
-#endif
 
     if (rcv_type == COAP_MESSAGE_RST) {
         ESP_LOGW(TAG, "Got RST");
@@ -128,8 +114,6 @@ static coap_response_t coap_response_handler(
                 client->inside_callback = false;
             }
         }
-    } else if (has_block2_option(received)) {
-        // TODO - Handle BLOCK2 option
     }
 
     notify_observers(received, client, data, data_len);
