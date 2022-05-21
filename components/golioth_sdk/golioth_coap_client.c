@@ -40,12 +40,14 @@ static void notify_observers(
         coap_bin_const_t rcvd_token = coap_pdu_get_token(received);
         bool len_matches = (rcvd_token.length == obs_info->token_len);
         if (len_matches && (0 == memcmp(rcvd_token.s, obs_info->token, obs_info->token_len))) {
+            client->inside_callback = true;
             callback(
                 client,
                 obs_info->req_params.path,
                 data,
                 data_len,
                 obs_info->req_params.arg);
+            client->inside_callback = false;
         }
     }
 }
@@ -116,12 +118,14 @@ static coap_response_t coap_response_handler(
         client->got_coap_response = true;
         if (client->pending_req.type == GOLIOTH_COAP_REQUEST_GET) {
             if (client->pending_req.get.callback) {
+                client->inside_callback = true;
                 client->pending_req.get.callback(
                     client,
                     client->pending_req.get.path,
                     data,
                     data_len,
                     client->pending_req.get.arg);
+                client->inside_callback = false;
             }
         }
     } else if (has_block2_option(received)) {
@@ -377,15 +381,12 @@ static golioth_status_t create_context(golioth_coap_client_t* client, coap_conte
     coap_set_app_data(*context, client);
 
     // Enable block mode, required for Golioth DFU
-    coap_context_set_block_mode(
-            *context,
-            COAP_BLOCK_USE_LIBCOAP|COAP_BLOCK_SINGLE_BODY);
+    coap_context_set_block_mode(*context, COAP_BLOCK_USE_LIBCOAP);
 
     // Register handlers
     coap_register_response_handler(*context, coap_response_handler);
     coap_register_event_handler(*context, event_handler);
     coap_register_nack_handler(*context, nack_handler);
-
 
     return GOLIOTH_OK;
 }
@@ -771,6 +772,12 @@ golioth_status_t golioth_coap_client_set(
         memcpy(request_payload, payload, payload_size);
     }
 
+    if (is_synchronous && c->inside_callback) {
+        ESP_LOGE(TAG, "Not allowed to perform synchronous request from inside callback");
+        ret = GOLIOTH_ERR_NOT_ALLOWED;
+        goto cleanup;
+    }
+
     if (is_synchronous) {
         request_complete_sem = xSemaphoreCreateBinary();
         if (!request_complete_sem) {
@@ -827,12 +834,21 @@ golioth_status_t golioth_coap_client_delete(
         return GOLIOTH_ERR_NULL;
     }
 
+    golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
+
+    if (is_synchronous && c->inside_callback) {
+        ESP_LOGE(TAG, "Not allowed to perform synchronous request from inside callback");
+        ret = GOLIOTH_ERR_NOT_ALLOWED;
+        goto cleanup;
+    }
+
     if (is_synchronous) {
         request_complete_sem = xSemaphoreCreateBinary();
         if (!request_complete_sem) {
             ESP_LOGE(TAG, "Failed to create request_complete semaphore");
-            return GOLIOTH_ERR_MEM_ALLOC;
+            ret = GOLIOTH_ERR_MEM_ALLOC;
+            goto cleanup;
         }
     }
 
@@ -845,7 +861,6 @@ golioth_status_t golioth_coap_client_delete(
         .request_complete_sem = request_complete_sem,
     };
 
-    golioth_status_t ret = GOLIOTH_OK;
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
         ESP_LOGE(TAG, "Failed to enqueue request, queue full");
@@ -877,12 +892,24 @@ golioth_status_t golioth_coap_client_get(
         return GOLIOTH_ERR_NULL;
     }
 
+    golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
+
+    if (is_synchronous && c->inside_callback) {
+        // Disallowed, because this would cause deadlock.
+        // The callback sync request would block forever and never complete,
+        // because the CoAP task is stuck inside the callback.
+        ESP_LOGE(TAG, "Not allowed to perform synchronous request from inside callback");
+        ret = GOLIOTH_ERR_NOT_ALLOWED;
+        goto cleanup;
+    }
+
     if (is_synchronous) {
         request_complete_sem = xSemaphoreCreateBinary();
         if (!request_complete_sem) {
             ESP_LOGE(TAG, "Failed to create request_complete semaphore");
-            return GOLIOTH_ERR_MEM_ALLOC;
+            ret = GOLIOTH_ERR_MEM_ALLOC;
+            goto cleanup;
         }
     }
 
@@ -898,7 +925,6 @@ golioth_status_t golioth_coap_client_get(
         .request_complete_sem = request_complete_sem,
     };
 
-    golioth_status_t ret = GOLIOTH_OK;
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
         ESP_LOGE(TAG, "Failed to enqueue request, queue full");

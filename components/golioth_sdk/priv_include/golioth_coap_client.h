@@ -89,6 +89,7 @@ typedef struct {
     size_t psk_len;
     golioth_coap_request_msg_t pending_req;
     golioth_coap_observe_info_t observations[CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS];
+    bool inside_callback;
 } golioth_coap_client_t;
 
 golioth_status_t golioth_coap_client_set(
