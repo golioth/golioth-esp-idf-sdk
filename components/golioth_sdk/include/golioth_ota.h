@@ -60,9 +60,6 @@ golioth_status_t golioth_ota_observe_manifest(
         void* arg);
 
 // Synchronous (wait for server response)
-golioth_status_t golioth_ota_get_manifest(
-        golioth_client_t client,
-        golioth_ota_manifest_t* manifest);
 golioth_status_t golioth_ota_get_block(
         golioth_client_t client,
         const char* package,

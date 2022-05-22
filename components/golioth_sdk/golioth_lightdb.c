@@ -30,7 +30,7 @@ static golioth_status_t golioth_lightdb_set_int_internal(
         golioth_client_t client,
         const char* path,
         int32_t value,
-        bool is_synchoronous) {
+        bool is_synchronous) {
     char buf[16] = {};
     snprintf(buf, sizeof(buf), "%d", value);
     return golioth_coap_client_set(
@@ -40,7 +40,7 @@ static golioth_status_t golioth_lightdb_set_int_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
             strlen(buf),
-            is_synchoronous);
+            is_synchronous);
 }
 
 static golioth_status_t golioth_lightdb_set_bool_internal(

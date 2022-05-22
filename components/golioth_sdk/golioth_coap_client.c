@@ -10,6 +10,7 @@
 #include "golioth_coap_client.h"
 #include "golioth_stats.h"
 #include "golioth_util.h"
+#include "golioth_lightdb.h"
 
 #define TAG "golioth_coap_client"
 
@@ -514,20 +515,11 @@ static golioth_status_t coap_io_loop_once(
 
 static void on_keepalive(TimerHandle_t timer) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)pvTimerGetTimerID(timer);
-
     ESP_LOGD(TAG, "keepalive");
-
-    // Send a dummy GET request to a non-existant path
-    golioth_coap_request_msg_t request_msg = {
-        .type = GOLIOTH_COAP_REQUEST_GET,
-        .get = {
-            .path = ".d/aaa",
-            .content_type = COAP_MEDIATYPE_APPLICATION_JSON,
-        },
-    };
-    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
-    if (!sent) {
-        ESP_LOGW(TAG, "Failed to enqueue keepalive request, queue full");
+    c->keepalive_count++;
+    golioth_status_t status = golioth_lightdb_set_int(c, "keepalive", c->keepalive_count);
+    if (status != GOLIOTH_OK) {
+        ESP_LOGW(TAG, "Failed to set keepalive %d", c->keepalive_count);
     }
 }
 
@@ -563,6 +555,9 @@ static void golioth_coap_client_task(void *arg) {
         if (create_session(client, coap_context, &coap_session) != GOLIOTH_OK) {
             goto cleanup;
         }
+
+        // TODO - if we are re-connecting and had prior observations, set
+        // them up again now (tokens need to be updated).
 
         ESP_LOGI(TAG, "Entering CoAP I/O loop");
         int iteration = 0;

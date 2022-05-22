@@ -78,6 +78,7 @@ typedef struct {
     TaskHandle_t coap_task_handle;
     SemaphoreHandle_t run_sem;
     TimerHandle_t keepalive_timer;
+    int keepalive_count;
     bool end_session;
     bool session_connected;
     uint8_t token[8];

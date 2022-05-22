@@ -9,9 +9,9 @@
 #define TAG "example_ota"
 
 static golioth_ota_manifest_t _ota_manifest;
-static SemaphoreHandle_t _ota_start_sem;
+static SemaphoreHandle_t _start_ota_sem;
 static uint8_t _ota_block_buffer[GOLIOTH_OTA_BLOCKSIZE];
-static const char* _current_version = "0.0.1";
+static const char* _current_version = "1.2.3";
 
 static void on_ota_manifest(golioth_client_t client, const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
     golioth_status_t status = golioth_ota_payload_as_manifest(payload, payload_size, &_ota_manifest);
@@ -19,7 +19,21 @@ static void on_ota_manifest(golioth_client_t client, const char* path, const uin
         ESP_LOGE(TAG, "Failed to parse manifest: %s", golioth_status_to_str(status));
         return;
     }
-    xSemaphoreGive(_ota_start_sem);
+
+    const golioth_ota_component_t* main_component = golioth_ota_find_component(&_ota_manifest, "main");
+    if (!main_component) {
+        ESP_LOGE(TAG, "Did not find \"main\" component in manifest");
+        return;
+    }
+
+    bool version_is_same = (0 == strcmp(_current_version, main_component->version));
+    if (version_is_same) {
+        ESP_LOGI(TAG, "Manifest version %s matches the current version. Nothing to do.", main_component->version);
+        return;
+    }
+
+    // Version is different, so we should start OTA process.
+    xSemaphoreGive(_start_ota_sem);
 }
 
 void app_main(void) {
@@ -37,9 +51,8 @@ void app_main(void) {
     golioth_client_t client = golioth_client_create(psk_id, psk);
     assert(client);
 
-    // TODO - check if OTA completed successfully, report state, goto end
 
-    golioth_ota_observe_manifest(client, on_ota_manifest, NULL);
+    // TODO - check if OTA completed successfully, report state, goto end
 
     golioth_ota_report_state(
             client,
@@ -49,21 +62,12 @@ void app_main(void) {
             _current_version,
             NULL);
 
-    ESP_LOGI(TAG, "Waiting to receive OTA manifest");
-    xSemaphoreTake(_ota_start_sem, portMAX_DELAY);
+    ESP_LOGI(TAG, "Waiting to receive OTA manifest with new firmware version");
+    _start_ota_sem = xSemaphoreCreateBinary();
+    golioth_ota_observe_manifest(client, on_ota_manifest, NULL);
+    xSemaphoreTake(_start_ota_sem, portMAX_DELAY);
+    vSemaphoreDelete(_start_ota_sem);
     ESP_LOGI(TAG, "Received OTA manifest. Starting OTA.");
-
-    const golioth_ota_component_t* main_component = golioth_ota_find_component(&_ota_manifest, "main");
-    if (!main_component) {
-        ESP_LOGE(TAG, "Did not find \"main\" component in manifest");
-        goto end;
-    }
-
-    bool version_is_same = (0 == strcmp(_current_version, main_component->version));
-    if (version_is_same) {
-        ESP_LOGI(TAG, "Manifest version %s matches the current version. Nothing to do.", main_component->version);
-        goto end;
-    }
 
     golioth_ota_report_state(
             client,
@@ -72,6 +76,9 @@ void app_main(void) {
             "main",
             _current_version,
             NULL);
+
+    const golioth_ota_component_t* main_component = golioth_ota_find_component(&_ota_manifest, "main");
+    assert(main_component);
 
     // Handle blocks one at a time
     size_t nblocks = golioth_ota_size_to_nblocks(main_component->size);
@@ -89,7 +96,7 @@ void app_main(void) {
                 &offset);
         if (status != GOLIOTH_OK) {
             ESP_LOGE(TAG, "Failed to get block index %d (%s)", i, golioth_status_to_str(status));
-            break;
+            goto end;
         }
 
         assert(block_nbytes <= GOLIOTH_OTA_BLOCKSIZE);
@@ -119,4 +126,5 @@ void app_main(void) {
 
 end:
     ESP_LOGI(TAG, "End of ota example");
+    golioth_client_destroy(client);
 }
