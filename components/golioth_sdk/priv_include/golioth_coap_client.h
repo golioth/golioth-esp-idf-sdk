@@ -36,6 +36,16 @@ typedef struct {
 typedef struct {
     const char* path_prefix;
     const char* path;
+    uint32_t content_type;
+    size_t block_index;
+    size_t block_size;
+    golioth_get_cb_fn callback;
+    void* arg;
+} golioth_coap_get_block_params_t;
+
+typedef struct {
+    const char* path_prefix;
+    const char* path;
 } golioth_coap_delete_params_t;
 
 typedef struct {
@@ -48,6 +58,7 @@ typedef struct {
 
 typedef enum {
     GOLIOTH_COAP_REQUEST_GET,
+    GOLIOTH_COAP_REQUEST_GET_BLOCK,
     GOLIOTH_COAP_REQUEST_PUT,
     GOLIOTH_COAP_REQUEST_DELETE,
     GOLIOTH_COAP_REQUEST_OBSERVE,
@@ -57,6 +68,7 @@ typedef struct {
     golioth_coap_request_type_t type;
     union {
         golioth_coap_get_params_t get;
+        golioth_coap_get_block_params_t get_block;
         golioth_coap_put_params_t put;
         golioth_coap_delete_params_t delete;
         golioth_coap_observe_params_t observe;
@@ -81,7 +93,7 @@ typedef struct {
     int keepalive_count;
     bool end_session;
     bool session_connected;
-    uint8_t token[8];
+    uint8_t token[8]; // token of the pending request
     size_t token_len;
     bool got_coap_response;
     const char* psk_id;
@@ -91,6 +103,9 @@ typedef struct {
     golioth_coap_request_msg_t pending_req;
     golioth_coap_observe_info_t observations[CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS];
     bool inside_callback;
+    // token to use for block GETs (must use same token for all blocks)
+    uint8_t block_token[8];
+    size_t block_token_len;
 } golioth_coap_client_t;
 
 golioth_status_t golioth_coap_client_set(
@@ -113,6 +128,17 @@ golioth_status_t golioth_coap_client_get(
         const char* path_prefix,
         const char* path,
         uint32_t content_type,
+        golioth_get_cb_fn callback,
+        void* arg,
+        bool is_synchronous);
+
+golioth_status_t golioth_coap_client_get_block(
+        golioth_client_t client,
+        const char* path_prefix,
+        const char* path,
+        uint32_t content_type,
+        size_t block_index,
+        size_t block_size,
         golioth_get_cb_fn callback,
         void* arg,
         bool is_synchronous);

@@ -53,19 +53,6 @@ static void notify_observers(
     }
 }
 
-static void print_payload(const uint8_t* data, size_t len) {
-    if (esp_log_level_get(TAG) < ESP_LOG_DEBUG) {
-        return;
-    }
-
-    printf(": ");
-    while(len--) {
-        printf("%c", isprint(*data) ? *data : '.');
-        data++;
-    }
-    printf("\n");
-}
-
 static coap_response_t coap_response_handler(
         coap_session_t* session,
         const coap_pdu_t* sent,
@@ -91,15 +78,11 @@ static coap_response_t coap_response_handler(
 
     const uint8_t* data = NULL;
     size_t data_len = 0;
-    size_t offset = 0;
-    size_t total = 0;
-    bool got_data = coap_get_data_large(received, &data_len, &data, &offset, &total);
+    bool got_data = coap_get_data(received, &data_len, &data);
     if (!got_data) {
         ESP_LOGW(TAG, "Failed to get data from response");
         return COAP_RESPONSE_FAIL;
     }
-
-    print_payload(data, data_len);
 
     if (token_matches_request(received, client)) {
         client->got_coap_response = true;
@@ -112,6 +95,17 @@ static coap_response_t coap_response_handler(
                     data,
                     data_len,
                     client->pending_req.get.arg);
+                client->inside_callback = false;
+            }
+        } else if (client->pending_req.type == GOLIOTH_COAP_REQUEST_GET_BLOCK) {
+            if (client->pending_req.get_block.callback) {
+                client->inside_callback = true;
+                client->pending_req.get_block.callback(
+                    client,
+                    client->pending_req.get_block.path,
+                    data,
+                    data_len,
+                    client->pending_req.get_block.arg);
                 client->inside_callback = false;
             }
         }
@@ -265,6 +259,23 @@ static void golioth_coap_add_content_type(coap_pdu_t* request, uint32_t content_
             typebuf);
 }
 
+static void golioth_coap_add_block2(coap_pdu_t* request, size_t block_index, size_t block_size) {
+    // TODO - handle block sizes other than 1024
+    size_t szx = 6;
+    coap_block_t block = {
+        .num = block_index,
+        .m = 0,
+        .szx = szx,
+    };
+
+    unsigned char buf[4];
+    unsigned int opt_length = coap_encode_var_safe(
+            buf,
+            sizeof(buf),
+            (block.num << 4 | block.m << 3 | block.szx));
+    coap_add_option(request, COAP_OPTION_BLOCK2, opt_length, buf);
+}
+
 static void golioth_coap_get(const golioth_coap_get_params_t* params, coap_session_t* session) {
     coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_GET, session);
     if (!request) {
@@ -275,6 +286,26 @@ static void golioth_coap_get(const golioth_coap_get_params_t* params, coap_sessi
     golioth_coap_add_token(request, session);
     golioth_coap_add_path(request, params->path_prefix, params->path);
     golioth_coap_add_content_type(request, params->content_type);
+    coap_send(session, request);
+}
+
+static void golioth_coap_get_block(golioth_coap_client_t* client, const golioth_coap_get_block_params_t* params, coap_session_t* session) {
+    coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_GET, session);
+    if (!request) {
+        ESP_LOGE(TAG, "coap_new_pdu() get failed");
+        return;
+    }
+
+    if (params->block_index == 0) {
+        golioth_coap_add_token(request, session);
+        memcpy(client->block_token, client->token, client->token_len);
+        client->block_token_len = client->token_len;
+    } else {
+        coap_add_token(request, client->block_token_len, client->block_token);
+    }
+
+    golioth_coap_add_path(request, params->path_prefix, params->path);
+    golioth_coap_add_block2(request, params->block_index, params->block_size);
     coap_send(session, request);
 }
 
@@ -365,9 +396,6 @@ static golioth_status_t create_context(golioth_coap_client_t* client, coap_conte
     // we register below.
     coap_set_app_data(*context, client);
 
-    // Enable block mode, required for Golioth DFU
-    coap_context_set_block_mode(*context, COAP_BLOCK_USE_LIBCOAP);
-
     // Register handlers
     coap_register_response_handler(*context, coap_response_handler);
     coap_register_event_handler(*context, event_handler);
@@ -441,6 +469,10 @@ static golioth_status_t coap_io_loop_once(
         case GOLIOTH_COAP_REQUEST_GET:
             ESP_LOGD(TAG, "Handle GET %s", request_msg.get.path);
             golioth_coap_get(&request_msg.get, session);
+            break;
+        case GOLIOTH_COAP_REQUEST_GET_BLOCK:
+            ESP_LOGD(TAG, "Handle GET_BLOCK %s", request_msg.get_block.path);
+            golioth_coap_get_block(client, &request_msg.get_block, session);
             break;
         case GOLIOTH_COAP_REQUEST_PUT:
             ESP_LOGD(TAG, "Handle PUT %s", request_msg.put.path);
@@ -598,7 +630,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
     if (!_initialized) {
         // Connect logs from libcoap to the ESP logger
         coap_set_log_handler(coap_log_handler);
-        coap_set_log_level(7); // 3: error, 4: warning, 6: info, 7: debug, 9:mbedtls
+        coap_set_log_level(6); // 3: error, 4: warning, 6: info, 7: debug, 9:mbedtls
 
         _initialized = true;
     }
@@ -858,13 +890,10 @@ cleanup:
     return ret;
 }
 
-golioth_status_t golioth_coap_client_get(
+static golioth_status_t golioth_coap_client_get_internal(
         golioth_client_t client,
-        const char* path_prefix,
-        const char* path,
-        uint32_t content_type,
-        golioth_get_cb_fn callback,
-        void* arg,
+        golioth_coap_request_type_t type,
+        void* request_params,
         bool is_synchronous) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
@@ -892,17 +921,15 @@ golioth_status_t golioth_coap_client_get(
         }
     }
 
-    golioth_coap_request_msg_t request_msg = {
-        .type = GOLIOTH_COAP_REQUEST_GET,
-        .get = {
-            .path_prefix = path_prefix,
-            .path = path,
-            .content_type = content_type,
-            .callback = callback,
-            .arg = arg,
-        },
-        .request_complete_sem = request_complete_sem,
-    };
+    golioth_coap_request_msg_t request_msg = {};
+    request_msg.type = type;
+    request_msg.request_complete_sem = request_complete_sem;
+    if (type == GOLIOTH_COAP_REQUEST_GET_BLOCK) {
+        request_msg.get_block = *(golioth_coap_get_block_params_t*)request_params;
+    } else {
+        assert(type == GOLIOTH_COAP_REQUEST_GET);
+        request_msg.get = *(golioth_coap_get_params_t*)request_params;
+    }
 
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
@@ -920,6 +947,46 @@ cleanup:
         vSemaphoreDelete(request_complete_sem);
     }
     return ret;
+}
+
+golioth_status_t golioth_coap_client_get(
+        golioth_client_t client,
+        const char* path_prefix,
+        const char* path,
+        uint32_t content_type,
+        golioth_get_cb_fn callback,
+        void* arg,
+        bool is_synchronous) {
+    golioth_coap_get_params_t params = {
+        .path_prefix = path_prefix,
+        .path = path,
+        .content_type = content_type,
+        .callback = callback,
+        .arg = arg,
+    };
+    return golioth_coap_client_get_internal(client, GOLIOTH_COAP_REQUEST_GET, &params, is_synchronous);
+}
+
+golioth_status_t golioth_coap_client_get_block(
+        golioth_client_t client,
+        const char* path_prefix,
+        const char* path,
+        uint32_t content_type,
+        size_t block_index,
+        size_t block_size,
+        golioth_get_cb_fn callback,
+        void* arg,
+        bool is_synchronous) {
+    golioth_coap_get_block_params_t params = {
+        .path_prefix = path_prefix,
+        .path = path,
+        .content_type = content_type,
+        .block_index = block_index,
+        .block_size = block_size,
+        .callback = callback,
+        .arg = arg,
+    };
+    return golioth_coap_client_get_internal(client, GOLIOTH_COAP_REQUEST_GET_BLOCK, &params, is_synchronous);
 }
 
 golioth_status_t golioth_coap_client_observe_async(

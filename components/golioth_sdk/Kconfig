@@ -58,4 +58,24 @@ config GOLIOTH_MAX_NUM_OBSERVATIONS
     help
         The maximum number of CoAP paths which can be simultaneously observed.
 
+config GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN
+    int "Golioth maximum OTA component package name length"
+    default 64
+    help
+        Maximum number of characters in the package name of a single
+        OTA component.
+
+config GOLIOTH_OTA_MAX_VERSION_LEN
+    int "Golioth maximum OTA component version length"
+    default 64
+    help
+        Maximum number of characters in the version string of a single
+        OTA component.
+
+config GOLIOTH_OTA_MAX_NUM_COMPONENTS
+    int "Golioth maximum OTA number of components"
+    default 4
+    help
+        Maximum number of components in an OTA manifest
+
 endmenu

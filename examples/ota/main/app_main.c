@@ -51,7 +51,6 @@ void app_main(void) {
     golioth_client_t client = golioth_client_create(psk_id, psk);
     assert(client);
 
-
     // TODO - check if OTA completed successfully, report state, goto end
 
     golioth_ota_report_state(
@@ -67,33 +66,34 @@ void app_main(void) {
     golioth_ota_observe_manifest(client, on_ota_manifest, NULL);
     xSemaphoreTake(_start_ota_sem, portMAX_DELAY);
     vSemaphoreDelete(_start_ota_sem);
-    ESP_LOGI(TAG, "Received OTA manifest. Starting OTA.");
+    ESP_LOGI(TAG, "Received OTA manifest");
 
+    const golioth_ota_component_t* main_component = golioth_ota_find_component(&_ota_manifest, "main");
+    assert(main_component);
+    ESP_LOGI(TAG, "Current version = %s, Target version = %s", _current_version, main_component->version);
+
+    ESP_LOGI(TAG, "State = Downloading");
     golioth_ota_report_state(
             client,
             GOLIOTH_OTA_STATE_DOWNLOADING,
             GOLIOTH_OTA_REASON_READY,
             "main",
             _current_version,
-            NULL);
-
-    const golioth_ota_component_t* main_component = golioth_ota_find_component(&_ota_manifest, "main");
-    assert(main_component);
+            main_component->version);
 
     // Handle blocks one at a time
     size_t nblocks = golioth_ota_size_to_nblocks(main_component->size);
     for (size_t i = 0; i < nblocks; i++) {
         size_t block_nbytes = 0;
         size_t offset = 0;
-        ESP_LOGD(TAG, "Getting block index %d (%d/%d)", i, i + 1, nblocks);
+        ESP_LOGI(TAG, "Getting block index %d (%d/%d)", i, i + 1, nblocks);
         golioth_status_t status = golioth_ota_get_block(
                 client,
                 main_component->package,
                 main_component->version,
                 i,
                 _ota_block_buffer,
-                &block_nbytes,
-                &offset);
+                &block_nbytes);
         if (status != GOLIOTH_OK) {
             ESP_LOGE(TAG, "Failed to get block index %d (%s)", i, golioth_status_to_str(status));
             goto end;
@@ -105,6 +105,7 @@ void app_main(void) {
         // TODO - integrate with esp-idf OTA
     }
 
+    ESP_LOGI(TAG, "State = Downloaded");
     golioth_ota_report_state(
             client,
             GOLIOTH_OTA_STATE_DOWNLOADED,
@@ -114,6 +115,7 @@ void app_main(void) {
             NULL);
 
     // TODO - apply
+    ESP_LOGI(TAG, "State = Updating");
     golioth_ota_report_state(
             client,
             GOLIOTH_OTA_STATE_UPDATING,

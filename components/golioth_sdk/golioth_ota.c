@@ -7,7 +7,12 @@
 #define TAG "golioth_ota"
 
 #define GOLIOTH_OTA_MANIFEST_PATH ".u/desired"
-#define GOLIOTH_OTA_REPORT_PATH_PREFIX ".u/c/"
+#define GOLIOTH_OTA_COMPONENT_PATH_PREFIX ".u/c/"
+
+typedef struct {
+    uint8_t* buf;
+    size_t* block_nbytes;
+} block_get_output_params_t;
 
 size_t golioth_ota_size_to_nblocks(size_t component_size) {
     size_t nblocks = component_size / GOLIOTH_OTA_BLOCKSIZE;
@@ -68,7 +73,7 @@ golioth_status_t golioth_ota_report_state(
 
     return golioth_coap_client_set(
             client,
-            GOLIOTH_OTA_REPORT_PATH_PREFIX,
+            GOLIOTH_OTA_COMPONENT_PATH_PREFIX,
             package,
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)jsonbuf,
@@ -108,7 +113,7 @@ golioth_status_t golioth_ota_payload_as_manifest(
             ret = GOLIOTH_ERR_INVALID_FORMAT;
             goto cleanup;
         }
-        strncpy(c->package, package->valuestring, GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN);
+        strncpy(c->package, package->valuestring, CONFIG_GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN);
 
         const cJSON* version = cJSON_GetObjectItemCaseSensitive(component, "version");
         if (!version || !cJSON_IsString(version)) {
@@ -116,7 +121,7 @@ golioth_status_t golioth_ota_payload_as_manifest(
             ret = GOLIOTH_ERR_INVALID_FORMAT;
             goto cleanup;
         }
-        strncpy(c->version, version->valuestring, GOLIOTH_OTA_MAX_VERSION_LEN);
+        strncpy(c->version, version->valuestring, CONFIG_GOLIOTH_OTA_MAX_VERSION_LEN);
 
         const cJSON* size = cJSON_GetObjectItemCaseSensitive(component, "size");
         if (!size || !cJSON_IsNumber(size)) {
@@ -134,14 +139,47 @@ cleanup:
     return ret;
 }
 
+static void on_block_rcvd(
+        golioth_client_t client,
+        const char* path,
+        const uint8_t* payload,
+        size_t payload_size,
+        void* arg) {
+    assert(arg);
+    assert(payload_size <= GOLIOTH_OTA_BLOCKSIZE);
+    block_get_output_params_t* out_params = (block_get_output_params_t*)arg;
+    if (out_params->buf) {
+        memcpy(out_params->buf, payload, payload_size);
+    }
+    if (out_params->block_nbytes) {
+        *out_params->block_nbytes = payload_size;
+    }
+}
+
 golioth_status_t golioth_ota_get_block(
         golioth_client_t client,
         const char* package,
         const char* version,
         size_t block_index,
         uint8_t* buf,  // must be at least GOLIOTH_OTA_BLOCKSIZE bytes
-        size_t* block_nbytes,
-        size_t* offset) {
-    // TODO
-    return GOLIOTH_OK;
+        size_t* block_nbytes) {
+    char path[CONFIG_GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN + CONFIG_GOLIOTH_OTA_MAX_VERSION_LEN + 2] = {};
+    snprintf(path, sizeof(path), "%s@%s", package, version);
+    block_get_output_params_t out_params = {
+        .buf = buf,
+        .block_nbytes = block_nbytes,
+    };
+
+    golioth_status_t status = GOLIOTH_OK;
+    status = golioth_coap_client_get_block(
+            client,
+            GOLIOTH_OTA_COMPONENT_PATH_PREFIX,
+            path,
+            COAP_MEDIATYPE_APPLICATION_JSON,
+            block_index,
+            GOLIOTH_OTA_BLOCKSIZE,
+            on_block_rcvd,
+            &out_params,
+            true);
+    return status;
 }

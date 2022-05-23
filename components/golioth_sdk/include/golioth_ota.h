@@ -6,11 +6,6 @@
 
 #define GOLIOTH_OTA_BLOCKSIZE 1024
 
-// TODO: move to Kconfig
-#define GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN 64
-#define GOLIOTH_OTA_MAX_VERSION_LEN 64
-#define GOLIOTH_OTA_MAX_NUM_COMPONENTS 4
-
 typedef enum {
     GOLIOTH_OTA_STATE_IDLE,
     GOLIOTH_OTA_STATE_DOWNLOADING,
@@ -32,14 +27,14 @@ typedef enum {
 } golioth_ota_reason_t;
 
 typedef struct {
-    char package[GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN + 1];
-    char version[GOLIOTH_OTA_MAX_VERSION_LEN + 1];
+    char package[CONFIG_GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN + 1];
+    char version[CONFIG_GOLIOTH_OTA_MAX_VERSION_LEN + 1];
     int32_t size;
 } golioth_ota_component_t;
 
 typedef struct {
     int32_t seqnum;
-    golioth_ota_component_t components[GOLIOTH_OTA_MAX_NUM_COMPONENTS];
+    golioth_ota_component_t components[CONFIG_GOLIOTH_OTA_MAX_NUM_COMPONENTS];
     size_t num_components;
 } golioth_ota_manifest_t;
 
@@ -66,8 +61,7 @@ golioth_status_t golioth_ota_get_block(
         const char* version,
         size_t block_index,
         uint8_t* buf,  // must be at least GOLIOTH_OTA_BLOCKSIZE bytes
-        size_t* block_nbytes,
-        size_t* offset);
+        size_t* block_nbytes);
 golioth_status_t golioth_ota_report_state(
         golioth_client_t client,
         golioth_ota_state_t state,
