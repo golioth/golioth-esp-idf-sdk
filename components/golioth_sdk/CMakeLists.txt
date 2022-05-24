@@ -4,7 +4,7 @@ idf_component_register(
     PRIV_INCLUDE_DIRS
         "priv_include"
     PRIV_REQUIRES
-        "coap"
+        "esp_libcoap"
         "json"
     SRCS
         "golioth_status.c"
