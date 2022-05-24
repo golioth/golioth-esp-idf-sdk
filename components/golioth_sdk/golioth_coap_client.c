@@ -124,6 +124,12 @@ static int event_handler(coap_session_t *session, const coap_event_t event) {
     switch(event) {
         case COAP_EVENT_SESSION_CONNECTED:
             ESP_LOGI(TAG, "Session connected");
+            if (client->event_callback && !client->session_connected) {
+                client->event_callback(
+                        client,
+                        GOLIOTH_CLIENT_EVENT_CONNECTED,
+                        client->event_callback_arg);
+            }
             client->session_connected = true;
             break;
         case COAP_EVENT_DTLS_CONNECTED:
@@ -138,6 +144,12 @@ static int event_handler(coap_session_t *session, const coap_event_t event) {
         case COAP_EVENT_TCP_FAILED:
         case COAP_EVENT_SESSION_FAILED:
             ESP_LOGE(TAG, "Session error. Ending session.");
+            if (client->event_callback && client->session_connected) {
+                client->event_callback(
+                        client,
+                        GOLIOTH_CLIENT_EVENT_DISCONNECTED,
+                        client->event_callback_arg);
+            }
             client->session_connected = false;
             client->end_session = true;
             break;
@@ -162,6 +174,12 @@ static void nack_handler(
         case COAP_NACK_TLS_FAILED:
         case COAP_NACK_ICMP_ISSUE:
             ESP_LOGE(TAG, "Received nack reason: %d. Ending session.", reason);
+            if (client->event_callback && client->session_connected) {
+                client->event_callback(
+                        client,
+                        GOLIOTH_CLIENT_EVENT_DISCONNECTED,
+                        client->event_callback_arg);
+            }
             client->session_connected = false;
             client->end_session = true;
             break;
@@ -537,10 +555,22 @@ static golioth_status_t coap_io_loop_once(
 
     if (time_spent_waiting_ms >= CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
         ESP_LOGE(TAG, "Timeout: never got a response from the server");
+        if (client->event_callback && client->session_connected) {
+            client->event_callback(
+                    client,
+                    GOLIOTH_CLIENT_EVENT_DISCONNECTED,
+                    client->event_callback_arg);
+        }
         client->session_connected = false;
         return GOLIOTH_ERR_TIMEOUT;
     }
 
+    if (client->event_callback && !client->session_connected) {
+        client->event_callback(
+                client,
+                GOLIOTH_CLIENT_EVENT_CONNECTED,
+                client->event_callback_arg);
+    }
     client->session_connected = true;
     return GOLIOTH_OK;
 }
@@ -1018,4 +1048,16 @@ golioth_status_t golioth_coap_client_observe_async(
     }
 
     return GOLIOTH_OK;
+}
+
+void golioth_client_register_event_callback(
+        golioth_client_t client,
+        golioth_client_event_cb_fn callback,
+        void* arg) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return;
+    }
+    c->event_callback = callback;
+    c->event_callback_arg = arg;
 }

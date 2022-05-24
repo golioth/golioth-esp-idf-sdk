@@ -60,6 +60,7 @@ typedef enum {
     GOLIOTH_COAP_REQUEST_GET,
     GOLIOTH_COAP_REQUEST_GET_BLOCK,
     GOLIOTH_COAP_REQUEST_PUT,
+    // TODO - support for PUT_BLOCK
     GOLIOTH_COAP_REQUEST_DELETE,
     GOLIOTH_COAP_REQUEST_OBSERVE,
 } golioth_coap_request_type_t;
@@ -106,6 +107,8 @@ typedef struct {
     // token to use for block GETs (must use same token for all blocks)
     uint8_t block_token[8];
     size_t block_token_len;
+    golioth_client_event_cb_fn event_callback;
+    void* event_callback_arg;
 } golioth_coap_client_t;
 
 golioth_status_t golioth_coap_client_set(

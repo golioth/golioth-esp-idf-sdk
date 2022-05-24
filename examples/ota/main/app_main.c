@@ -36,6 +36,12 @@ static void on_ota_manifest(golioth_client_t client, const char* path, const uin
     xSemaphoreGive(_start_ota_sem);
 }
 
+void on_client_event(golioth_client_t client, golioth_client_event_t event, void* arg) {
+    if (event == GOLIOTH_CLIENT_EVENT_CONNECTED) {
+        // TODO - if OTA state pending, cancel rollback timer
+    }
+}
+
 void app_main(void) {
     // Initialization required for connecting to WiFi
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -51,7 +57,12 @@ void app_main(void) {
     golioth_client_t client = golioth_client_create(psk_id, psk);
     assert(client);
 
-    // TODO - check if OTA completed successfully, report state, goto end
+    // TODO - Detect if pending verify
+    // TODO - create rollback timer
+    golioth_client_register_event_callback(client, on_client_event, NULL);
+
+    // Start one-shot rollback timer
+    //      rollback and reboot
 
     golioth_ota_report_state(
             client,
@@ -81,6 +92,8 @@ void app_main(void) {
             _current_version,
             main_component->version);
 
+    // TODO - get update partition
+
     // Handle blocks one at a time
     size_t nblocks = golioth_ota_size_to_nblocks(main_component->size);
     for (size_t i = 0; i < nblocks; i++) {
@@ -102,7 +115,8 @@ void app_main(void) {
         assert(block_nbytes <= GOLIOTH_OTA_BLOCKSIZE);
         ESP_LOGD(TAG, "Got block index %d, nbytes %zu, offset %zu", i, block_nbytes, offset);
 
-        // TODO - integrate with esp-idf OTA
+        // TODO - if block 0, check header, check last invalid app does not match new app, begin OTA
+        // TODO - esp_ota_write
     }
 
     ESP_LOGI(TAG, "State = Downloaded");
@@ -114,7 +128,6 @@ void app_main(void) {
             _current_version,
             NULL);
 
-    // TODO - apply
     ESP_LOGI(TAG, "State = Updating");
     golioth_ota_report_state(
             client,
@@ -124,7 +137,9 @@ void app_main(void) {
             _current_version,
             NULL);
 
-    // TODO - reboot
+    // TODO - esp_ota_end
+    // TODO - esp_ota_set_boot_partition
+    // TODO - esp_restart
 
 end:
     ESP_LOGI(TAG, "End of ota example");
