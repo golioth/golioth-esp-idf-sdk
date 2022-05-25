@@ -1,9 +1,11 @@
 idf_component_register(
+    PRIV_INCLUDE_DIRS
+        "."
     SRCS
         "app_main.c"
     PRIV_REQUIRES
         "golioth_sdk"
+        "fw_update"
         "nvs_flash"
         "protocol_examples_common"
-        "app_update"
 )

@@ -1,0 +1,9 @@
+idf_component_register(
+    INCLUDE_DIRS
+        "."
+    REQUIRES
+        "golioth_sdk"
+        "app_update"
+    SRCS
+        "fw_update.c"
+)
