@@ -7,3 +7,8 @@ CONFIG_LWIP_NETBUF_RECVINFO=y
 # partition table layout, with a 4MB flash size
 CONFIG_ESPTOOLPY_FLASHSIZE_4MB=y
 CONFIG_PARTITION_TABLE_TWO_OTA=y
+
+# If the new app firmware does not cancel the rollback,
+# then this will ensure that rollback happens automatically
+# if/when the device is next rebooted.
+CONFIG_BOOTLOADER_APP_ROLLBACK_ENABLE=y

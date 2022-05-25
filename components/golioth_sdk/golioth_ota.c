@@ -147,13 +147,13 @@ static void on_block_rcvd(
         void* arg) {
     assert(arg);
     assert(payload_size <= GOLIOTH_OTA_BLOCKSIZE);
+
     block_get_output_params_t* out_params = (block_get_output_params_t*)arg;
-    if (out_params->buf) {
-        memcpy(out_params->buf, payload, payload_size);
-    }
-    if (out_params->block_nbytes) {
-        *out_params->block_nbytes = payload_size;
-    }
+    assert(out_params->buf);
+    assert(out_params->block_nbytes);
+
+    memcpy(out_params->buf, payload, payload_size);
+    *out_params->block_nbytes = payload_size;
 }
 
 golioth_status_t golioth_ota_get_block(
