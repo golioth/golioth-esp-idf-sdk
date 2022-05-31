@@ -2,6 +2,7 @@
 #include "golioth_coap_client.h"
 #include "golioth_lightdb.h"
 #include "golioth_stats.h"
+#include "golioth_util.h"
 
 #define TAG "golioth_lightdb"
 
@@ -113,7 +114,7 @@ static golioth_status_t golioth_lightdb_delete_internal(
         golioth_client_t client,
         const char* path,
         bool is_synchronous) {
-    return golioth_coap_client_delete(client, GOLIOTH_LIGHTDB_PATH_PREFIX, path, true);
+    return golioth_coap_client_delete(client, GOLIOTH_LIGHTDB_PATH_PREFIX, path, is_synchronous);
 }
 
 static golioth_status_t golioth_lightdb_get_internal(
@@ -257,7 +258,13 @@ static void on_payload(golioth_client_t client, const char* path, const uint8_t*
             *response->b = golioth_payload_as_bool(payload, payload_size);
             break;
         case LIGHTDB_GET_TYPE_STRING:
-            snprintf(response->strbuf, response->strbuf_size, "%s", payload);
+            {
+                // Remove the leading and trailing quote to get the raw string value
+                size_t nbytes = min(response->strbuf_size - 1, payload_size - 2);
+                ESP_LOGI(TAG, "get_string: %zu %zu %zu", nbytes, response->strbuf_size, payload_size);
+                memcpy(response->strbuf, payload + 1 /* skip quote */, nbytes);
+                response->strbuf[nbytes] = 0;
+            }
             break;
         default:
             assert(false);

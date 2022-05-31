@@ -57,6 +57,11 @@ static void on_example_json(golioth_client_t client, const char* path, const uin
     cJSON_Delete(json);
 }
 
+static void on_client_event(golioth_client_t client, golioth_client_event_t event, void* arg) {
+    ESP_LOGI(TAG, "Golioth client %s",
+            event == GOLIOTH_CLIENT_EVENT_CONNECTED ? "connected" : "disconnected");
+}
+
 void app_main(void) {
     // Initialization required for connecting to WiFi
     ESP_ERROR_CHECK(nvs_flash_init());
@@ -71,6 +76,7 @@ void app_main(void) {
     const char* psk = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK;
     golioth_client_t client = golioth_client_create(psk_id, psk);
     assert(client);
+    golioth_client_register_event_callback(client, on_client_event, NULL);
 
     int32_t iteration = 0;
     bool bool_toggle = false;

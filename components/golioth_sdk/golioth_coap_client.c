@@ -17,6 +17,32 @@
 static bool _initialized;
 golioth_stats_t g_golioth_stats;
 
+// This is the struct hidden by the opaque type golioth_client_t
+// TODO - document these once design is more stable
+typedef struct {
+    QueueHandle_t request_queue;
+    TaskHandle_t coap_task_handle;
+    SemaphoreHandle_t run_sem;
+    TimerHandle_t keepalive_timer;
+    int keepalive_count;
+    bool end_session;
+    bool session_connected;
+    uint8_t token[8]; // token of the pending request
+    size_t token_len;
+    bool got_coap_response;
+    const char* psk_id;
+    size_t psk_id_len;
+    const char* psk;
+    size_t psk_len;
+    golioth_coap_request_msg_t pending_req;
+    golioth_coap_observe_info_t observations[CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS];
+    bool inside_callback;
+    // token to use for block GETs (must use same token for all blocks)
+    uint8_t block_token[8];
+    size_t block_token_len;
+    golioth_client_event_cb_fn event_callback;
+    void* event_callback_arg;
+} golioth_coap_client_t;
 
 static bool token_matches_request(const coap_pdu_t* received, golioth_coap_client_t* client) {
     coap_bin_const_t rcvd_token = coap_pdu_get_token(received);
@@ -70,22 +96,20 @@ static coap_response_t coap_response_handler(
     coap_context_t* coap_context = coap_session_get_context(session);
     golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
 
-    if (CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS > 0) {
-        if (!xTimerReset(client->keepalive_timer, 0)) {
-            ESP_LOGW(TAG, "Failed to reset keepalive timer");
-        }
-    }
 
     const uint8_t* data = NULL;
     size_t data_len = 0;
-    bool got_data = coap_get_data(received, &data_len, &data);
-    if (!got_data) {
-        ESP_LOGW(TAG, "Failed to get data from response");
-        return COAP_RESPONSE_FAIL;
-    }
+    coap_get_data(received, &data_len, &data);
 
     if (token_matches_request(received, client)) {
         client->got_coap_response = true;
+
+        if (CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS > 0) {
+            if (!xTimerReset(client->keepalive_timer, 0)) {
+                ESP_LOGW(TAG, "Failed to reset keepalive timer");
+            }
+        }
+
         if (client->pending_req.type == GOLIOTH_COAP_REQUEST_GET) {
             if (client->pending_req.get.callback) {
                 client->inside_callback = true;
@@ -294,6 +318,23 @@ static void golioth_coap_add_block2(coap_pdu_t* request, size_t block_index, siz
     coap_add_option(request, COAP_OPTION_BLOCK2, opt_length, buf);
 }
 
+static void golioth_coap_empty(const golioth_coap_get_params_t* params, coap_session_t* session) {
+    // Note: libcoap has keepalive functionality built in, but we're not using because
+    // it doesn't seem to work correctly. The server responds to the keepalive message,
+    // but libcoap is disconnecting the session after the response is received:
+    //
+    //     DTLS: session disconnected (reason 1)
+    //
+    // Instead, we will send an empty DELETE request
+    coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_DELETE, session);
+    if (!request) {
+        ESP_LOGE(TAG, "coap_new_pdu() delete failed");
+        return;
+    }
+    golioth_coap_add_token(request, session);
+    coap_send(session, request);
+}
+
 static void golioth_coap_get(const golioth_coap_get_params_t* params, coap_session_t* session) {
     coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_GET, session);
     if (!request) {
@@ -484,6 +525,10 @@ static golioth_status_t coap_io_loop_once(
     // Handle message and send request to server
     bool request_is_valid = true;
     switch (request_msg.type) {
+        case GOLIOTH_COAP_REQUEST_EMPTY:
+            ESP_LOGD(TAG, "Handle EMPTY");
+            golioth_coap_empty(&request_msg.get, session);
+            break;
         case GOLIOTH_COAP_REQUEST_GET:
             ESP_LOGD(TAG, "Handle GET %s", request_msg.get.path);
             golioth_coap_get(&request_msg.get, session);
@@ -579,10 +624,7 @@ static void on_keepalive(TimerHandle_t timer) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)pvTimerGetTimerID(timer);
     ESP_LOGD(TAG, "keepalive");
     c->keepalive_count++;
-    golioth_status_t status = golioth_lightdb_set_int(c, "keepalive", c->keepalive_count);
-    if (status != GOLIOTH_OK) {
-        ESP_LOGW(TAG, "Failed to set keepalive %d", c->keepalive_count);
-    }
+    golioth_coap_client_empty(c, false);
 }
 
 static void print_heap_usage(void) {
@@ -617,6 +659,13 @@ static void golioth_coap_client_task(void *arg) {
         if (create_session(client, coap_context, &coap_session) != GOLIOTH_OK) {
             goto cleanup;
         }
+
+        // If queue is non-empty, enqueue an asynchronous EMPTY request.
+        //
+        // This is done so we can determine quickly whether we are connected
+        // to the cloud or not (libcoap does not tell us when it's connected
+        // for some reason, so this is a workaround for that).
+        golioth_coap_client_empty(client, false);
 
         // TODO - if we are re-connecting and had prior observations, set
         // them up again now (tokens need to be updated).
@@ -778,6 +827,47 @@ bool golioth_client_is_connected(golioth_client_t client) {
         return false;
     }
     return c->session_connected;
+}
+
+golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_synchronous) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return GOLIOTH_ERR_NULL;
+    }
+
+    golioth_status_t ret = GOLIOTH_OK;
+    SemaphoreHandle_t request_complete_sem = NULL;
+
+    if (is_synchronous) {
+        request_complete_sem = xSemaphoreCreateBinary();
+        if (!request_complete_sem) {
+            ESP_LOGE(TAG, "Failed to create request_complete semaphore");
+            ret = GOLIOTH_ERR_MEM_ALLOC;
+            goto cleanup;
+        }
+    }
+
+    golioth_coap_request_msg_t request_msg = {
+        .type = GOLIOTH_COAP_REQUEST_EMPTY,
+        .request_complete_sem = request_complete_sem,
+    };
+
+    BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
+    if (!sent) {
+        ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        ret = GOLIOTH_ERR_QUEUE_FULL;
+        goto cleanup;
+    }
+
+    if (is_synchronous) {
+        xSemaphoreTake(request_complete_sem, portMAX_DELAY);
+    }
+
+cleanup:
+    if (request_complete_sem) {
+        vSemaphoreDelete(request_complete_sem);
+    }
+    return ret;
 }
 
 golioth_status_t golioth_coap_client_set(

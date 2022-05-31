@@ -57,6 +57,7 @@ typedef struct {
 } golioth_coap_observe_params_t;
 
 typedef enum {
+    GOLIOTH_COAP_REQUEST_EMPTY,
     GOLIOTH_COAP_REQUEST_GET,
     GOLIOTH_COAP_REQUEST_GET_BLOCK,
     GOLIOTH_COAP_REQUEST_PUT,
@@ -84,32 +85,7 @@ typedef struct {
     size_t token_len;
 } golioth_coap_observe_info_t;
 
-// This is the struct hidden by the opaque type golioth_client_t
-// TODO - document these once design is more stable
-typedef struct {
-    QueueHandle_t request_queue;
-    TaskHandle_t coap_task_handle;
-    SemaphoreHandle_t run_sem;
-    TimerHandle_t keepalive_timer;
-    int keepalive_count;
-    bool end_session;
-    bool session_connected;
-    uint8_t token[8]; // token of the pending request
-    size_t token_len;
-    bool got_coap_response;
-    const char* psk_id;
-    size_t psk_id_len;
-    const char* psk;
-    size_t psk_len;
-    golioth_coap_request_msg_t pending_req;
-    golioth_coap_observe_info_t observations[CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS];
-    bool inside_callback;
-    // token to use for block GETs (must use same token for all blocks)
-    uint8_t block_token[8];
-    size_t block_token_len;
-    golioth_client_event_cb_fn event_callback;
-    void* event_callback_arg;
-} golioth_coap_client_t;
+golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_synchronous);
 
 golioth_status_t golioth_coap_client_set(
         golioth_client_t client,
