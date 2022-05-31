@@ -660,6 +660,13 @@ static void golioth_coap_client_task(void *arg) {
             goto cleanup;
         }
 
+        // Seed the session token generator
+        uint8_t seed_token[8];
+        size_t seed_token_len;
+        uint32_t randint = (uint32_t)rand();
+        seed_token_len = coap_encode_var_safe8(seed_token, sizeof(seed_token), randint);
+        coap_session_init_token(coap_session, seed_token_len, seed_token);
+
         // If queue is non-empty, enqueue an asynchronous EMPTY request.
         //
         // This is done so we can determine quickly whether we are connected
@@ -710,6 +717,10 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
         // Connect logs from libcoap to the ESP logger
         coap_set_log_handler(coap_log_handler);
         coap_set_log_level(6); // 3: error, 4: warning, 6: info, 7: debug, 9:mbedtls
+
+        // Seed the random number generator. Used for token generation.
+        time_t t;
+        srand(time(&t));
 
         _initialized = true;
     }
