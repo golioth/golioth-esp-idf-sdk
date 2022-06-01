@@ -43,7 +43,7 @@ config GOLIOTH_COAP_TASK_STACK_SIZE_BYTES
 
 config GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS
     int "Golioth CoAP keepalive interval, in milliseconds"
-    default 0
+    default 9000
     help
         How often to send a "keepalive" dummy client request to the server.
         If the session is idle for this amount of time, then the keepalive
