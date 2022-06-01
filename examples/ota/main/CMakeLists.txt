@@ -5,7 +5,8 @@ idf_component_register(
         "app_main.c"
     PRIV_REQUIRES
         "golioth_sdk"
+        "golioth_wifi"
+        "golioth_shell"
         "fw_update"
         "nvs_flash"
-        "protocol_examples_common"
 )

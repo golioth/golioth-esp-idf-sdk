@@ -3,7 +3,8 @@ idf_component_register(
         "app_main.c"
     PRIV_REQUIRES
         "golioth_sdk"
+        "golioth_shell"
+        "golioth_wifi"
         "nvs_flash"
-        "protocol_examples_common"
         "json"
 )

@@ -2,11 +2,9 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "esp_log.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
-#include "nvs_flash.h"
-#include "protocol_examples_common.h"
 #include "golioth.h"
+#include "golioth_shell.h"
+#include "golioth_wifi.h"
 #include "fw_update.h"
 
 #define TAG "example_ota"
@@ -34,14 +32,9 @@ static void on_client_event(golioth_client_t client, golioth_client_event_t even
 }
 
 void app_main(void) {
-    // Initialization required for connecting to WiFi
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    // Connect to wifi
-    // See $ENV{IDF_PATH}/examples/protocols/README.md for details
-    ESP_ERROR_CHECK(example_connect());
+    golioth_shell_init();
+    golioth_wifi_init();
+    golioth_wifi_wait_for_connected();
 
     _manifest_rcvd = xSemaphoreCreateBinary();
     _golioth_connected = xSemaphoreCreateBinary();

@@ -1,10 +1,10 @@
 #include <string.h>
 #include <cJSON.h>
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 #include "esp_log.h"
-#include "esp_wifi.h"
-#include "esp_event.h"
-#include "nvs_flash.h"
-#include "protocol_examples_common.h"
+#include "golioth_shell.h"
+#include "golioth_wifi.h"
 #include "golioth.h"
 
 #define TAG "golioth_basics"
@@ -63,14 +63,9 @@ static void on_client_event(golioth_client_t client, golioth_client_event_t even
 }
 
 void app_main(void) {
-    // Initialization required for connecting to WiFi
-    ESP_ERROR_CHECK(nvs_flash_init());
-    ESP_ERROR_CHECK(esp_netif_init());
-    ESP_ERROR_CHECK(esp_event_loop_create_default());
-
-    // Connect to wifi
-    // See $ENV{IDF_PATH}/examples/protocols/README.md for details
-    ESP_ERROR_CHECK(example_connect());
+    golioth_shell_init();
+    golioth_wifi_init();
+    golioth_wifi_wait_for_connected();
 
     const char* psk_id = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID;
     const char* psk = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK;
@@ -116,8 +111,6 @@ void app_main(void) {
 
         iteration++;
         bool_toggle = !bool_toggle;
-
-        ESP_LOGI(TAG, "app_main delaying for 10s...");
         vTaskDelay(10000 / portTICK_PERIOD_MS);
     };
 }
