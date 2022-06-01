@@ -22,7 +22,7 @@ static void on_my_setting(golioth_client_t client, const char* path, const uint8
 
     int32_t* actual_value_ptr = (int32_t*)arg;
     int32_t desired_value = golioth_payload_as_int(payload, payload_size);
-    ESP_LOGI(TAG, "Cloud desires my_setting = %d. Setting now.", desired_value);
+    ESP_LOGI(TAG, "Cloud desires %s = %d. Setting now.", path, desired_value);
     *actual_value_ptr = desired_value;
     golioth_lightdb_delete(client, path);
 }

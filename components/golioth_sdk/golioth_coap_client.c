@@ -302,8 +302,7 @@ static void golioth_coap_add_content_type(coap_pdu_t* request, uint32_t content_
 }
 
 static void golioth_coap_add_block2(coap_pdu_t* request, size_t block_index, size_t block_size) {
-    // TODO - handle block sizes other than 1024
-    size_t szx = 6;
+    size_t szx = 6; // 1024 bytes
     coap_block_t block = {
         .num = block_index,
         .m = 0,
@@ -318,7 +317,7 @@ static void golioth_coap_add_block2(coap_pdu_t* request, size_t block_index, siz
     coap_add_option(request, COAP_OPTION_BLOCK2, opt_length, buf);
 }
 
-static void golioth_coap_empty(const golioth_coap_get_params_t* params, coap_session_t* session) {
+static void golioth_coap_empty(coap_session_t* session) {
     // Note: libcoap has keepalive functionality built in, but we're not using because
     // it doesn't seem to work correctly. The server responds to the keepalive message,
     // but libcoap is disconnecting the session after the response is received:
@@ -441,7 +440,18 @@ static void golioth_coap_observe(
     golioth_coap_add_content_type(request, params->content_type);
 
     coap_send(session, request);
-    add_observation(client, params);
+}
+
+static void reestablish_observations(golioth_coap_client_t* client, coap_session_t* session) {
+    golioth_coap_observe_info_t* obs_info = NULL;
+    for (int i = 0; i < CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS; i++) {
+        obs_info = &client->observations[i];
+        if (obs_info->in_use) {
+            golioth_coap_observe(client, &obs_info->req_params, session);
+            memcpy(obs_info->token, client->token, client->token_len);
+            obs_info->token_len = client->token_len;
+        }
+    }
 }
 
 static golioth_status_t create_context(golioth_coap_client_t* client, coap_context_t** context) {
@@ -527,7 +537,7 @@ static golioth_status_t coap_io_loop_once(
     switch (request_msg.type) {
         case GOLIOTH_COAP_REQUEST_EMPTY:
             ESP_LOGD(TAG, "Handle EMPTY");
-            golioth_coap_empty(&request_msg.get, session);
+            golioth_coap_empty(session);
             break;
         case GOLIOTH_COAP_REQUEST_GET:
             ESP_LOGD(TAG, "Handle GET %s", request_msg.get.path);
@@ -551,6 +561,7 @@ static golioth_status_t coap_io_loop_once(
         case GOLIOTH_COAP_REQUEST_OBSERVE:
             ESP_LOGD(TAG, "Handle OBSERVE %s", request_msg.observe.path);
             golioth_coap_observe(client, &request_msg.observe, session);
+            add_observation(client, &request_msg.observe);
             break;
         default:
             ESP_LOGW(TAG, "Unknown request_msg type: %u", request_msg.type);
@@ -667,15 +678,16 @@ static void golioth_coap_client_task(void *arg) {
         seed_token_len = coap_encode_var_safe8(seed_token, sizeof(seed_token), randint);
         coap_session_init_token(coap_session, seed_token_len, seed_token);
 
-        // If queue is non-empty, enqueue an asynchronous EMPTY request.
+        // Enqueue an asynchronous EMPTY request immediately.
         //
         // This is done so we can determine quickly whether we are connected
         // to the cloud or not (libcoap does not tell us when it's connected
         // for some reason, so this is a workaround for that).
-        golioth_coap_client_empty(client, false);
+        golioth_coap_empty(coap_session);
 
-        // TODO - if we are re-connecting and had prior observations, set
-        // them up again now (tokens need to be updated).
+        // If we are re-connecting and had prior observations, set
+        // them up again now (tokens will be updated).
+        reestablish_observations(client, coap_session);
 
         ESP_LOGI(TAG, "Entering CoAP I/O loop");
         int iteration = 0;

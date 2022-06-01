@@ -261,7 +261,6 @@ static void on_payload(golioth_client_t client, const char* path, const uint8_t*
             {
                 // Remove the leading and trailing quote to get the raw string value
                 size_t nbytes = min(response->strbuf_size - 1, payload_size - 2);
-                ESP_LOGI(TAG, "get_string: %zu %zu %zu", nbytes, response->strbuf_size, payload_size);
                 memcpy(response->strbuf, payload + 1 /* skip quote */, nbytes);
                 response->strbuf[nbytes] = 0;
             }
