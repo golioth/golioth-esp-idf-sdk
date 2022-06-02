@@ -5,9 +5,11 @@
 #include "esp_log.h"
 #include "shell.h"
 #include "wifi.h"
+#include "fw_update.h"
 #include "golioth.h"
 
-#define TAG "golioth_basics"
+#define TAG "golioth_example"
+static const char* _current_version = "1.2.3";
 
 static void on_float_value(golioth_client_t client, const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
     float value = golioth_payload_as_float(payload, payload_size);
@@ -71,6 +73,10 @@ void app_main(void) {
     const char* psk = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK;
     golioth_client_t client = golioth_client_create(psk_id, psk);
     assert(client);
+
+    // Spawn background task that will perform firmware updates (aka OTA update)
+    fw_update_init(client, _current_version);
+
     golioth_client_register_event_callback(client, on_client_event, NULL);
 
     int32_t iteration = 0;

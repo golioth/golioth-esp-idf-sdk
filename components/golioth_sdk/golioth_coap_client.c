@@ -18,7 +18,7 @@ static bool _initialized;
 golioth_stats_t g_golioth_stats;
 
 // This is the struct hidden by the opaque type golioth_client_t
-// TODO - document these once design is more stable
+// TODO - document these
 typedef struct {
     QueueHandle_t request_queue;
     TaskHandle_t coap_task_handle;
@@ -36,7 +36,6 @@ typedef struct {
     size_t psk_len;
     golioth_coap_request_msg_t pending_req;
     golioth_coap_observe_info_t observations[CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS];
-    bool inside_callback;
     // token to use for block GETs (must use same token for all blocks)
     uint8_t block_token[8];
     size_t block_token_len;
@@ -67,14 +66,12 @@ static void notify_observers(
         coap_bin_const_t rcvd_token = coap_pdu_get_token(received);
         bool len_matches = (rcvd_token.length == obs_info->token_len);
         if (len_matches && (0 == memcmp(rcvd_token.s, obs_info->token, obs_info->token_len))) {
-            client->inside_callback = true;
             callback(
                 client,
                 obs_info->req_params.path,
                 data,
                 data_len,
                 obs_info->req_params.arg);
-            client->inside_callback = false;
         }
     }
 }
@@ -112,25 +109,21 @@ static coap_response_t coap_response_handler(
 
         if (client->pending_req.type == GOLIOTH_COAP_REQUEST_GET) {
             if (client->pending_req.get.callback) {
-                client->inside_callback = true;
                 client->pending_req.get.callback(
                     client,
                     client->pending_req.get.path,
                     data,
                     data_len,
                     client->pending_req.get.arg);
-                client->inside_callback = false;
             }
         } else if (client->pending_req.type == GOLIOTH_COAP_REQUEST_GET_BLOCK) {
             if (client->pending_req.get_block.callback) {
-                client->inside_callback = true;
                 client->pending_req.get_block.callback(
                     client,
                     client->pending_req.get_block.path,
                     data,
                     data_len,
                     client->pending_req.get_block.arg);
-                client->inside_callback = false;
             }
         }
     }
@@ -360,6 +353,11 @@ static void golioth_coap_get_block(golioth_coap_client_t* client, const golioth_
         client->block_token_len = client->token_len;
     } else {
         coap_add_token(request, client->block_token_len, client->block_token);
+
+        // Copy block token into the current request token, since this is what
+        // is checked in coap_response_handler to verify the response has been received.
+        memcpy(client->token, client->block_token, client->block_token_len);
+        client->token_len = client->block_token_len;
     }
 
     golioth_coap_add_path(request, params->path_prefix, params->path);
@@ -926,12 +924,6 @@ golioth_status_t golioth_coap_client_set(
         memcpy(request_payload, payload, payload_size);
     }
 
-    if (is_synchronous && c->inside_callback) {
-        ESP_LOGE(TAG, "Not allowed to perform synchronous request from inside callback");
-        ret = GOLIOTH_ERR_NOT_ALLOWED;
-        goto cleanup;
-    }
-
     if (is_synchronous) {
         request_complete_sem = xSemaphoreCreateBinary();
         if (!request_complete_sem) {
@@ -991,12 +983,6 @@ golioth_status_t golioth_coap_client_delete(
     golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
 
-    if (is_synchronous && c->inside_callback) {
-        ESP_LOGE(TAG, "Not allowed to perform synchronous request from inside callback");
-        ret = GOLIOTH_ERR_NOT_ALLOWED;
-        goto cleanup;
-    }
-
     if (is_synchronous) {
         request_complete_sem = xSemaphoreCreateBinary();
         if (!request_complete_sem) {
@@ -1045,15 +1031,6 @@ static golioth_status_t golioth_coap_client_get_internal(
 
     golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
-
-    if (is_synchronous && c->inside_callback) {
-        // Disallowed, because this would cause deadlock.
-        // The callback sync request would block forever and never complete,
-        // because the CoAP task is stuck inside the callback.
-        ESP_LOGE(TAG, "Not allowed to perform synchronous request from inside callback");
-        ret = GOLIOTH_ERR_NOT_ALLOWED;
-        goto cleanup;
-    }
 
     if (is_synchronous) {
         request_complete_sem = xSemaphoreCreateBinary();
