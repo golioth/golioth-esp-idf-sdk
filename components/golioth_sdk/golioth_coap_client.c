@@ -17,6 +17,9 @@
 static bool _initialized;
 golioth_stats_t g_golioth_stats;
 
+#define GOLIOTH_DEFAULT_PSK_ID "unknown"
+#define GOLIOTH_DEFAULT_PSK "unknown"
+
 // This is the struct hidden by the opaque type golioth_client_t
 // TODO - document these
 typedef struct {
@@ -636,15 +639,6 @@ static void on_keepalive(TimerHandle_t timer) {
     golioth_coap_client_empty(c, false);
 }
 
-static void print_heap_usage(void) {
-    uint32_t free_heap = xPortGetFreeHeapSize();
-    uint32_t min_free_heap = xPortGetMinimumEverFreeHeapSize();
-    ESP_LOGD(TAG, "Free heap = %u bytes, Min ever free heap = %u", free_heap, min_free_heap);
-
-    ESP_LOGD(TAG, "SDK alloc - free = %d",
-            g_golioth_stats.total_allocd_bytes - g_golioth_stats.total_freed_bytes);
-}
-
 // Note: libcoap is not thread safe, so all rx/tx I/O for the session must be
 // done in this task.
 static void golioth_coap_client_task(void *arg) {
@@ -699,9 +693,6 @@ static void golioth_coap_client_task(void *arg) {
 
             if (coap_io_loop_once(client, coap_context, coap_session) != GOLIOTH_OK) {
                 client->end_session = true;
-            }
-            if ((iteration % 10) == 0) {
-                print_heap_usage();
             }
             iteration++;
         }

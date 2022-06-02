@@ -3,6 +3,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "nvs.h"
 #include "shell.h"
 #include "wifi.h"
 #include "fw_update.h"
@@ -65,13 +66,22 @@ static void on_client_event(golioth_client_t client, golioth_client_event_t even
 }
 
 void app_main(void) {
+    nvs_init();
     shell_init();
-    wifi_init();
+
+    if (!nvs_credentials_set()) {
+        while (1) {
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            ESP_LOGW(TAG, "WiFi and golioth credentials are not set");
+            ESP_LOGW(TAG, "Use the shell commands wifi_set and golioth_set to set them, then restart");
+            vTaskDelay(portMAX_DELAY);
+        }
+    }
+
+    wifi_init(nvs_read_wifi_ssid(), nvs_read_wifi_password());
     wifi_wait_for_connected();
 
-    const char* psk_id = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID;
-    const char* psk = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK;
-    golioth_client_t client = golioth_client_create(psk_id, psk);
+    golioth_client_t client = golioth_client_create(nvs_read_golioth_psk_id(), nvs_read_golioth_psk());
     assert(client);
 
     // Spawn background task that will perform firmware updates (aka OTA update)
