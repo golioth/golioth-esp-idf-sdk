@@ -1,10 +1,14 @@
 idf_component_register(
     SRCS
         "app_main.c"
+        "shell.c"
+        "wifi.c"
+        "fw_update.c"
     PRIV_REQUIRES
         "golioth_sdk"
-        "golioth_shell"
-        "golioth_wifi"
+        "console"
+        "spi_flash"
         "nvs_flash"
         "json"
+        "app_update"
 )

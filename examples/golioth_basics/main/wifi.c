@@ -9,31 +9,31 @@
 #include "nvs_flash.h"
 #include "lwip/err.h"
 #include "lwip/sys.h"
-#include "golioth_wifi.h"
+#include "wifi.h"
 
-#define TAG "golioth_wifi"
+#define TAG "example_wifi"
 
 /* The event group allows multiple bits for each event, but we only care about two events:
  * - we are connected to the AP with an IP
  * - we failed to connect after the maximum amount of retries */
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
-#define GOLIOTH_WIFI_MAX_RETRIES 5
+#define WIFI_MAX_RETRIES 5
 
 // NVS keys for wifi credentials
-#define GOLIOTH_WIFI_NVS_NAMESPACE "golioth"
-#define GOLIOTH_WIFI_SSID_KEY "wifi_ssid"
-#define GOLIOTH_WIFI_PASS_KEY "wifi_pass"
+#define WIFI_NVS_NAMESPACE "wifi"
+#define WIFI_SSID_KEY "ssid"
+#define WIFI_PASS_KEY "pass"
 
-#define GOLIOTH_WIFI_DEFAULT_SSID "unknown"
-#define GOLIOTH_WIFI_DEFAULT_PASS "unknown"
+#define WIFI_DEFAULT_SSID "unknown"
+#define WIFI_DEFAULT_PASS "unknown"
 
 static EventGroupHandle_t s_wifi_event_group;
 static int s_retry_num = 0;
 
 static const char* read_nvs_key_or_default(const char* key, char* out, size_t outsize, const char* defaultstr) {
     nvs_handle_t handle;
-    esp_err_t err = nvs_open(GOLIOTH_WIFI_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    esp_err_t err = nvs_open(WIFI_NVS_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "nvs_open failed");
         return defaultstr;
@@ -49,7 +49,7 @@ static const char* read_nvs_key_or_default(const char* key, char* out, size_t ou
 
 static void write_nvs_key(const char* key, const char* str) {
     nvs_handle_t handle;
-    esp_err_t err = nvs_open(GOLIOTH_WIFI_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    esp_err_t err = nvs_open(WIFI_NVS_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "nvs_open failed");
         return;
@@ -64,7 +64,7 @@ static void write_nvs_key(const char* key, const char* str) {
 
 static void erase_nvs_key(const char* key) {
     nvs_handle_t handle;
-    esp_err_t err = nvs_open(GOLIOTH_WIFI_NVS_NAMESPACE, NVS_READWRITE, &handle);
+    esp_err_t err = nvs_open(WIFI_NVS_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "nvs_open failed");
         return;
@@ -79,28 +79,28 @@ static void erase_nvs_key(const char* key) {
 
 static const char* read_nvs_ssid(void) {
     static char ssidbuf[32];
-    return read_nvs_key_or_default(GOLIOTH_WIFI_SSID_KEY, ssidbuf, sizeof(ssidbuf), GOLIOTH_WIFI_DEFAULT_SSID);
+    return read_nvs_key_or_default(WIFI_SSID_KEY, ssidbuf, sizeof(ssidbuf), WIFI_DEFAULT_SSID);
 }
 
 static const char* read_nvs_pass(void) {
     static char passbuf[32];
-    return read_nvs_key_or_default(GOLIOTH_WIFI_PASS_KEY, passbuf, sizeof(passbuf), GOLIOTH_WIFI_DEFAULT_PASS);
+    return read_nvs_key_or_default(WIFI_PASS_KEY, passbuf, sizeof(passbuf), WIFI_DEFAULT_PASS);
 }
 
 static void write_nvs_ssid(const char* ssid) {
-    write_nvs_key(GOLIOTH_WIFI_SSID_KEY, ssid);
+    write_nvs_key(WIFI_SSID_KEY, ssid);
 }
 
 static void write_nvs_pass(const char* password) {
-    write_nvs_key(GOLIOTH_WIFI_PASS_KEY, password);
+    write_nvs_key(WIFI_PASS_KEY, password);
 }
 
 static void connect(void) {
-    if (0 == strcmp(read_nvs_ssid(), GOLIOTH_WIFI_DEFAULT_SSID)) {
+    if (0 == strcmp(read_nvs_ssid(), WIFI_DEFAULT_SSID)) {
         ESP_LOGW(TAG, "Can't connect, WiFi SSID not set");
         return;
     }
-    if (0 == strcmp(read_nvs_pass(), GOLIOTH_WIFI_DEFAULT_PASS)) {
+    if (0 == strcmp(read_nvs_pass(), WIFI_DEFAULT_PASS)) {
         ESP_LOGW(TAG, "Can't connect, WiFi password not set");
         return;
     }
@@ -112,7 +112,7 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
         connect();
     } else if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_DISCONNECTED) {
         xEventGroupClearBits(s_wifi_event_group, WIFI_CONNECTED_BIT);
-        if (s_retry_num < GOLIOTH_WIFI_MAX_RETRIES) {
+        if (s_retry_num < WIFI_MAX_RETRIES) {
             connect();
             s_retry_num++;
             ESP_LOGI(TAG, "retry to connect to the AP");
@@ -128,9 +128,9 @@ static void event_handler(void* arg, esp_event_base_t event_base, int32_t event_
     }
 }
 
-static void golioth_wifi_init_internal(const char* ssid, const char* password) {
+static void wifi_init_internal(const char* ssid, const char* password) {
     if (s_wifi_event_group) {
-        ESP_LOGW(TAG, "golioth_wifi_init is not intended to be called more than once");
+        ESP_LOGW(TAG, "wifi_init is not intended to be called more than once");
         return;
     }
     s_wifi_event_group = xEventGroupCreate();
@@ -161,19 +161,19 @@ static void golioth_wifi_init_internal(const char* ssid, const char* password) {
     ESP_ERROR_CHECK(esp_wifi_start() );
 }
 
-void golioth_wifi_init_with_credentials(const char* ssid, const char* password) {
+void wifi_init_with_credentials(const char* ssid, const char* password) {
     ESP_ERROR_CHECK(nvs_flash_init());
     write_nvs_ssid(ssid);
     write_nvs_pass(password);
-    golioth_wifi_init_internal(read_nvs_ssid(), read_nvs_pass());
+    wifi_init_internal(read_nvs_ssid(), read_nvs_pass());
 }
 
-void golioth_wifi_init(void) {
+void wifi_init(void) {
     ESP_ERROR_CHECK(nvs_flash_init());
-    golioth_wifi_init_internal(read_nvs_ssid(), read_nvs_pass());
+    wifi_init_internal(read_nvs_ssid(), read_nvs_pass());
 }
 
-void golioth_wifi_set_credentials_and_connect(const char* ssid, const char* password) {
+void wifi_set_credentials_and_connect(const char* ssid, const char* password) {
     write_nvs_ssid(ssid);
     write_nvs_pass(password);
 
@@ -187,17 +187,17 @@ void golioth_wifi_set_credentials_and_connect(const char* ssid, const char* pass
     connect();
 }
 
-void golioth_wifi_get_credentials(const char** ssid, const char** password) {
+void wifi_get_credentials(const char** ssid, const char** password) {
     *ssid = read_nvs_ssid();
     *password = read_nvs_pass();
 }
 
-void golioth_wifi_clear_credentials(void) {
-    erase_nvs_key(GOLIOTH_WIFI_SSID_KEY);
-    erase_nvs_key(GOLIOTH_WIFI_PASS_KEY);
+void wifi_clear_credentials(void) {
+    erase_nvs_key(WIFI_SSID_KEY);
+    erase_nvs_key(WIFI_PASS_KEY);
 }
 
-void golioth_wifi_wait_for_connected(void) {
+void wifi_wait_for_connected(void) {
     EventBits_t bits = xEventGroupWaitBits(s_wifi_event_group,
             WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
             pdFALSE,
@@ -213,3 +213,4 @@ void golioth_wifi_wait_for_connected(void) {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
 }
+

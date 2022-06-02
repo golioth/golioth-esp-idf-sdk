@@ -104,8 +104,7 @@ static void register_restart(void)
 
 /** 'free' command prints available heap memory */
 
-static int free_mem(int argc, char **argv)
-{
+static int free_mem(int argc, char **argv) {
     printf("%d\n", esp_get_free_heap_size());
     return 0;
 }

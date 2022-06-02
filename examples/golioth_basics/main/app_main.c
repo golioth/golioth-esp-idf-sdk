@@ -3,8 +3,8 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
-#include "golioth_shell.h"
-#include "golioth_wifi.h"
+#include "shell.h"
+#include "wifi.h"
 #include "golioth.h"
 
 #define TAG "golioth_basics"
@@ -63,9 +63,9 @@ static void on_client_event(golioth_client_t client, golioth_client_event_t even
 }
 
 void app_main(void) {
-    golioth_shell_init();
-    golioth_wifi_init();
-    golioth_wifi_wait_for_connected();
+    shell_init();
+    wifi_init();
+    wifi_wait_for_connected();
 
     const char* psk_id = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID;
     const char* psk = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK;
