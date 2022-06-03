@@ -125,6 +125,12 @@ void app_main(void) {
         example_json_set(client);
         golioth_lightdb_get(client, "example_json", on_example_json, NULL);
 
+        // LightDB Stream
+        ESP_LOGI(TAG, "LDB Stream set randint");
+        int randint = rand();
+        golioth_lightdb_stream_set_int_sync(client, "randint", randint);
+        golioth_lightdb_stream_set_string_sync(client, "message", "hello", strlen("hello"));
+
         iteration++;
         bool_toggle = !bool_toggle;
         vTaskDelay(10000 / portTICK_PERIOD_MS);

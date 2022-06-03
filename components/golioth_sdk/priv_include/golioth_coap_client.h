@@ -23,7 +23,7 @@ typedef struct {
     uint8_t* payload;
     // Size of payload, in bytes
     size_t payload_size;
-} golioth_coap_put_params_t;
+} golioth_coap_post_params_t;
 
 typedef struct {
     const char* path_prefix;
@@ -60,8 +60,8 @@ typedef enum {
     GOLIOTH_COAP_REQUEST_EMPTY,
     GOLIOTH_COAP_REQUEST_GET,
     GOLIOTH_COAP_REQUEST_GET_BLOCK,
-    GOLIOTH_COAP_REQUEST_PUT,
-    // TODO - support for PUT_BLOCK
+    GOLIOTH_COAP_REQUEST_POST,
+    // TODO - support for POST_BLOCK
     GOLIOTH_COAP_REQUEST_DELETE,
     GOLIOTH_COAP_REQUEST_OBSERVE,
 } golioth_coap_request_type_t;
@@ -71,7 +71,7 @@ typedef struct {
     union {
         golioth_coap_get_params_t get;
         golioth_coap_get_block_params_t get_block;
-        golioth_coap_put_params_t put;
+        golioth_coap_post_params_t post;
         golioth_coap_delete_params_t delete;
         golioth_coap_observe_params_t observe;
     };

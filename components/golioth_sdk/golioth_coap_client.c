@@ -368,10 +368,10 @@ static void golioth_coap_get_block(golioth_coap_client_t* client, const golioth_
     coap_send(session, request);
 }
 
-static void golioth_coap_put(const golioth_coap_put_params_t* params, coap_session_t* session) {
-    coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_PUT, session);
+static void golioth_coap_post(const golioth_coap_post_params_t* params, coap_session_t* session) {
+    coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_POST, session);
     if (!request) {
-        ESP_LOGE(TAG, "coap_new_pdu() put failed");
+        ESP_LOGE(TAG, "coap_new_pdu() post failed");
         return;
     }
 
@@ -548,12 +548,12 @@ static golioth_status_t coap_io_loop_once(
             ESP_LOGD(TAG, "Handle GET_BLOCK %s", request_msg.get_block.path);
             golioth_coap_get_block(client, &request_msg.get_block, session);
             break;
-        case GOLIOTH_COAP_REQUEST_PUT:
-            ESP_LOGD(TAG, "Handle PUT %s", request_msg.put.path);
-            golioth_coap_put(&request_msg.put, session);
-            assert(request_msg.put.payload);
-            free(request_msg.put.payload);
-            g_golioth_stats.total_freed_bytes += request_msg.put.payload_size;
+        case GOLIOTH_COAP_REQUEST_POST:
+            ESP_LOGD(TAG, "Handle POST %s", request_msg.post.path);
+            golioth_coap_post(&request_msg.post, session);
+            assert(request_msg.post.payload);
+            free(request_msg.post.payload);
+            g_golioth_stats.total_freed_bytes += request_msg.post.payload_size;
             break;
         case GOLIOTH_COAP_REQUEST_DELETE:
             ESP_LOGD(TAG, "Handle DELETE %s", request_msg.delete.path);
@@ -717,7 +717,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
     if (!_initialized) {
         // Connect logs from libcoap to the ESP logger
         coap_set_log_handler(coap_log_handler);
-        coap_set_log_level(6); // 3: error, 4: warning, 6: info, 7: debug, 9:mbedtls
+        coap_set_log_level(7); // 3: error, 4: warning, 6: info, 7: debug, 9:mbedtls
 
         // Seed the random number generator. Used for token generation.
         time_t t;
@@ -925,8 +925,8 @@ golioth_status_t golioth_coap_client_set(
     }
 
     golioth_coap_request_msg_t request_msg = {
-        .type = GOLIOTH_COAP_REQUEST_PUT,
-        .put = {
+        .type = GOLIOTH_COAP_REQUEST_POST,
+        .post = {
             .path_prefix = path_prefix,
             .path = path,
             .content_type = content_type,
