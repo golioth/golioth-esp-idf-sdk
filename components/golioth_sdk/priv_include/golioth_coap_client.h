@@ -5,7 +5,7 @@
 #include <freertos/task.h>
 #include <freertos/semphr.h>
 #include <freertos/timers.h>
-#include <coap3/coap.h> // COAP_MEDIATYPE_*
+#include <coap3/coap.h>  // COAP_MEDIATYPE_*
 #include "golioth_client.h"
 #include "golioth_lightdb.h"
 

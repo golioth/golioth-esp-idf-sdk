@@ -3,6 +3,8 @@
 #include "golioth_status.h"
 #include "golioth_client.h"
 
+// clang-format off
+
 // Deserialization
 int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size);
 float golioth_payload_as_float(const uint8_t* payload, size_t payload_size);
@@ -45,3 +47,5 @@ golioth_status_t golioth_lightdb_stream_set_bool_sync(golioth_client_t client, c
 golioth_status_t golioth_lightdb_stream_set_float_sync(golioth_client_t client, const char* path, float value);
 golioth_status_t golioth_lightdb_stream_set_string_sync(golioth_client_t client, const char* path, const char* str, size_t str_len);
 golioth_status_t golioth_lightdb_stream_set_json_sync(golioth_client_t client, const char* path, const char* json_str, size_t json_str_len);
+
+//clang-format on

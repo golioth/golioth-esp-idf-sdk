@@ -12,12 +12,22 @@
 #define TAG "golioth_example"
 static const char* _current_version = "1.2.3";
 
-static void on_float_value(golioth_client_t client, const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
+static void on_float_value(
+        golioth_client_t client,
+        const char* path,
+        const uint8_t* payload,
+        size_t payload_size,
+        void* arg) {
     float value = golioth_payload_as_float(payload, payload_size);
     ESP_LOGI(TAG, "Got float_value = %f", value);
 }
 
-static void on_my_setting(golioth_client_t client, const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
+static void on_my_setting(
+        golioth_client_t client,
+        const char* path,
+        const uint8_t* payload,
+        size_t payload_size,
+        void* arg) {
     // Payload might be null if desired/my_setting is deleted, so ignore that case
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
@@ -41,7 +51,12 @@ static void example_json_set_async(golioth_client_t client) {
     golioth_lightdb_set_json_async(client, "example_json", jsonbuf, strlen(jsonbuf));
 }
 
-static void on_example_json(golioth_client_t client, const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
+static void on_example_json(
+        golioth_client_t client,
+        const char* path,
+        const uint8_t* payload,
+        size_t payload_size,
+        void* arg) {
     cJSON* json = cJSON_ParseWithLength((const char*)payload, payload_size);
     if (!json) {
         ESP_LOGE(TAG, "Failed to parse example_json");
@@ -59,7 +74,9 @@ static void on_example_json(golioth_client_t client, const char* path, const uin
 }
 
 static void on_client_event(golioth_client_t client, golioth_client_event_t event, void* arg) {
-    ESP_LOGI(TAG, "Golioth client %s",
+    ESP_LOGI(
+            TAG,
+            "Golioth client %s",
             event == GOLIOTH_CLIENT_EVENT_CONNECTED ? "connected" : "disconnected");
 }
 
@@ -71,7 +88,9 @@ void app_main(void) {
         while (1) {
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             ESP_LOGW(TAG, "WiFi and golioth credentials are not set");
-            ESP_LOGW(TAG, "Use the shell commands wifi_set and golioth_set to set them, then restart");
+            ESP_LOGW(
+                    TAG,
+                    "Use the shell commands wifi_set and golioth_set to set them, then restart");
             vTaskDelay(portMAX_DELAY);
         }
     }
@@ -79,7 +98,8 @@ void app_main(void) {
     wifi_init(nvs_read_wifi_ssid(), nvs_read_wifi_password());
     wifi_wait_for_connected();
 
-    golioth_client_t client = golioth_client_create(nvs_read_golioth_psk_id(), nvs_read_golioth_psk());
+    golioth_client_t client =
+            golioth_client_create(nvs_read_golioth_psk_id(), nvs_read_golioth_psk());
     assert(client);
 
     // Spawn background task that will perform firmware updates (aka OTA update)
@@ -105,7 +125,9 @@ void app_main(void) {
             ESP_LOGI(TAG, "Sync read iteration = %d", read_iteration);
         }
         char read_string_value[16] = {};
-        if (GOLIOTH_OK == golioth_lightdb_get_string_sync(client, "string_value", read_string_value, sizeof(read_string_value))) {
+        if (GOLIOTH_OK
+            == golioth_lightdb_get_string_sync(
+                    client, "string_value", read_string_value, sizeof(read_string_value))) {
             ESP_LOGI(TAG, "Sync read string_value = %s", read_string_value);
         }
 
@@ -114,7 +136,8 @@ void app_main(void) {
         golioth_lightdb_set_int_async(client, "iteration", iteration);
         golioth_lightdb_set_int_async(client, "my_setting", my_setting);
         golioth_lightdb_set_float_async(client, "float_value", float_value);
-        golioth_lightdb_set_string_async(client, "string_value", string_value, strlen(string_value));
+        golioth_lightdb_set_string_async(
+                client, "string_value", string_value, strlen(string_value));
         golioth_lightdb_get_async(client, "float_value", on_float_value, NULL);
         example_json_set_async(client);
         golioth_lightdb_get_async(client, "example_json", on_example_json, NULL);

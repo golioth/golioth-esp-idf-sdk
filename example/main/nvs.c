@@ -5,7 +5,8 @@
 
 #define TAG "nvs"
 
-static const char* read_nvs_key_or_default(const char* key, char* out, size_t outsize, const char* defaultstr) {
+static const char*
+read_nvs_key_or_default(const char* key, char* out, size_t outsize, const char* defaultstr) {
     nvs_handle_t handle;
     esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) {

@@ -44,15 +44,17 @@ golioth_status_t golioth_ota_payload_as_manifest(
         golioth_ota_manifest_t* manifest);
 
 size_t golioth_ota_size_to_nblocks(size_t component_size);
-const golioth_ota_component_t* golioth_ota_find_component(
-        const golioth_ota_manifest_t* manifest,
-        const char* package);
+const golioth_ota_component_t*
+golioth_ota_find_component(const golioth_ota_manifest_t* manifest, const char* package);
 
 // Asynchronous
-golioth_status_t golioth_ota_observe_manifest_async(
-        golioth_client_t client,
-        golioth_get_cb_fn callback,
-        void* arg);
+<<<<<<< Updated upstream
+golioth_status_t
+golioth_ota_observe_manifest_async(golioth_client_t client, golioth_get_cb_fn callback, void* arg);
+=======
+golioth_status_t
+golioth_ota_observe_manifest(golioth_client_t client, golioth_get_cb_fn callback, void* arg);
+>>>>>>> Stashed changes
 
 // Synchronous (wait for server response)
 golioth_status_t golioth_ota_get_block_sync(
@@ -67,5 +69,5 @@ golioth_status_t golioth_ota_report_state_sync(
         golioth_ota_state_t state,
         golioth_ota_reason_t reason,
         const char* package,
-        const char* current_version, // optional, can be NULL
-        const char* target_version); // optional, can be NULL
+        const char* current_version,  // optional, can be NULL
+        const char* target_version);  // optional, can be NULL
