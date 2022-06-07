@@ -6,11 +6,11 @@ config GOLIOTH_COAP_HOST_URI
     help
         The URI of the CoAP server
 
-config GOLIOTH_COAP_RESPONSE_TIMEOUT_MS
+config GOLIOTH_COAP_RESPONSE_TIMEOUT_S
     int "CoAP response timeout"
-    default 10000
+    default 10
     help
-        Maximum time, in milliseconds, the CoAP task will block while waiting
+        Maximum time, in seconds, the CoAP task will block while waiting
         for a response from the server.
 
 config GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS
@@ -41,9 +41,9 @@ config GOLIOTH_COAP_TASK_STACK_SIZE_BYTES
     help
         FreeRTOS task stack size of the Golioth CoAP task, in bytes.
 
-config GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS
-    int "Golioth CoAP keepalive interval, in milliseconds"
-    default 9000
+config GOLIOTH_COAP_KEEPALIVE_INTERVAL_S
+    int "Golioth CoAP keepalive interval, in seconds"
+    default 9
     help
         How often to send a "keepalive" dummy client request to the server.
         If the session is idle for this amount of time, then the keepalive

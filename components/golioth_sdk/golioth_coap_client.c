@@ -104,7 +104,7 @@ static coap_response_t coap_response_handler(
     if (token_matches_request(received, client)) {
         client->got_coap_response = true;
 
-        if (CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS > 0) {
+        if (CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_S > 0) {
             if (!xTimerReset(client->keepalive_timer, 0)) {
                 ESP_LOGW(TAG, "Failed to reset keepalive timer");
             }
@@ -579,9 +579,10 @@ static golioth_status_t coap_io_loop_once(
     client->pending_req = request_msg;
     client->got_coap_response = false;
     int32_t time_spent_waiting_ms = 0;
+    int32_t timeout_ms = CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_S * 1000;
     bool io_error = false;
-    while (time_spent_waiting_ms < CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
-        int32_t remaining_ms = CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS - time_spent_waiting_ms;
+    while (time_spent_waiting_ms < timeout_ms) {
+        int32_t remaining_ms = timeout_ms - time_spent_waiting_ms;
         int32_t wait_ms = min(1000, remaining_ms);
         ESP_LOGD(TAG, "Response wait io process start");
         int32_t num_ms = coap_io_process(context, wait_ms);
@@ -610,7 +611,7 @@ static golioth_status_t coap_io_loop_once(
         return GOLIOTH_ERR_IO;
     }
 
-    if (time_spent_waiting_ms >= CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_MS) {
+    if (time_spent_waiting_ms >= timeout_ms) {
         ESP_LOGE(TAG, "Timeout: never got a response from the server");
         if (client->event_callback && client->session_connected) {
             client->event_callback(
@@ -767,7 +768,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
 
     new_client->keepalive_timer = xTimerCreate(
             "keepalive",
-            max(1000, CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS) / portTICK_PERIOD_MS,
+            max(1000, 1000 * CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_S) / portTICK_PERIOD_MS,
             pdTRUE, // auto-reload
             new_client, // pvTimerID
             on_keepalive);
@@ -776,7 +777,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
         goto error;
     }
 
-    if (CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS > 0) {
+    if (CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_S > 0) {
         if (!xTimerStart(new_client->keepalive_timer, 0)) {
             ESP_LOGE(TAG, "Failed to start keepalive timer");
             goto error;
