@@ -35,8 +35,6 @@ static void example_json_set_async(golioth_client_t client) {
     cJSON* json = cJSON_CreateObject();
     cJSON_AddNumberToObject(json, "a_float", 3.5f);
     cJSON_AddNumberToObject(json, "an_int", -5);
-    cJSON_AddStringToObject(json, "a_string", "string_value");
-    cJSON_AddBoolToObject(json, "a_bool", true);
     bool printed = cJSON_PrintPreallocated(json, jsonbuf, sizeof(jsonbuf) - 5, false);
     assert(printed);
     cJSON_Delete(json);
@@ -69,7 +67,6 @@ void app_main(void) {
     nvs_init();
     shell_init();
 
-    // TODO -
     if (!nvs_credentials_are_set()) {
         while (1) {
             vTaskDelay(1000 / portTICK_PERIOD_MS);
@@ -91,7 +88,6 @@ void app_main(void) {
     golioth_client_register_event_callback(client, on_client_event, NULL);
 
     int32_t iteration = 0;
-    bool bool_toggle = false;
     float float_value = 1.234f;
     const char* string_value = "a string";
 
@@ -102,9 +98,8 @@ void app_main(void) {
     golioth_lightdb_observe_async(client, "desired/my_setting", on_my_setting, &my_setting);
 
     while (1) {
-        // Synchronous API (blocks until server responds or times out)
-        ESP_LOGI(TAG, "Start of synchronous example");
-        golioth_log_info_sync(client, TAG, "This is a synchronous message");
+        // Synchronous API examples (blocks until server responds or times out)
+        golioth_log_info_sync(client, TAG, "sync log message");
         int32_t read_iteration = 0;
         if (GOLIOTH_OK == golioth_lightdb_get_int_sync(client, "iteration", &read_iteration)) {
             ESP_LOGI(TAG, "Sync read iteration = %d", read_iteration);
@@ -113,13 +108,11 @@ void app_main(void) {
         if (GOLIOTH_OK == golioth_lightdb_get_string_sync(client, "string_value", read_string_value, sizeof(read_string_value))) {
             ESP_LOGI(TAG, "Sync read string_value = %s", read_string_value);
         }
-        ESP_LOGI(TAG, "End of synchronous example");
 
-        // Asynchronous API (non-blocking, doesn't wait for server response)
+        // Asynchronous API examples (non-blocking, doesn't wait for server response)
         golioth_log_info_async(client, TAG, "This is a message");
         golioth_lightdb_set_int_async(client, "iteration", iteration);
         golioth_lightdb_set_int_async(client, "my_setting", my_setting);
-        golioth_lightdb_set_bool_async(client, "bool_toggle", bool_toggle);
         golioth_lightdb_set_float_async(client, "float_value", float_value);
         golioth_lightdb_set_string_async(client, "string_value", string_value, strlen(string_value));
         golioth_lightdb_get_async(client, "float_value", on_float_value, NULL);
@@ -127,13 +120,9 @@ void app_main(void) {
         golioth_lightdb_get_async(client, "example_json", on_example_json, NULL);
 
         // LightDB Stream
-        ESP_LOGI(TAG, "LDB Stream set randint");
-        int randint = rand();
-        golioth_lightdb_stream_set_int_sync(client, "randint", randint);
-        golioth_lightdb_stream_set_string_sync(client, "message", "hello", strlen("hello"));
+        golioth_lightdb_stream_set_int_sync(client, "randint", rand());
 
         iteration++;
-        bool_toggle = !bool_toggle;
         vTaskDelay(10000 / portTICK_PERIOD_MS);
     };
 }
