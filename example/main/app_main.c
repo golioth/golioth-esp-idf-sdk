@@ -69,7 +69,8 @@ void app_main(void) {
     nvs_init();
     shell_init();
 
-    if (!nvs_credentials_set()) {
+    // TODO -
+    if (!nvs_credentials_are_set()) {
         while (1) {
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             ESP_LOGW(TAG, "WiFi and golioth credentials are not set");

@@ -75,7 +75,7 @@ void nvs_erase_str(const char* key) {
     nvs_close(handle);
 }
 
-bool nvs_credentials_set(void) {
+bool nvs_credentials_are_set(void) {
     if (0 == strcmp(nvs_read_wifi_ssid(), NVS_DEFAULT_STR)) {
         return false;
     }
