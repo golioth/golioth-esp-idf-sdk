@@ -16,8 +16,7 @@
 
 #define GENERATE_GOLIOTH_STATUS_ENUM(code) code,
 typedef enum {
-    FOREACH_GOLIOTH_STATUS(GENERATE_GOLIOTH_STATUS_ENUM)
-    NUM_GOLIOTH_STATUS_CODES
+    FOREACH_GOLIOTH_STATUS(GENERATE_GOLIOTH_STATUS_ENUM) NUM_GOLIOTH_STATUS_CODES
 } golioth_status_t;
 
 const char* golioth_status_to_str(golioth_status_t status);
@@ -28,4 +27,4 @@ const char* golioth_status_to_str(golioth_status_t status);
         if (status != GOLIOTH_OK) { \
             return status; \
         } \
-    } while(0)
+    } while (0)

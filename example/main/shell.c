@@ -14,7 +14,7 @@
 
 #define TAG "shell"
 #define PROMPT_STR CONFIG_IDF_TARGET
-#define COUNT_OF(x) ((sizeof(x)/sizeof(0[x])) / ((size_t)(!(sizeof(x) % sizeof(0[x])))))
+#define COUNT_OF(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t)(!(sizeof(x) % sizeof(0 [x])))))
 
 static struct {
     struct arg_str* ssid;
@@ -28,90 +28,90 @@ static struct {
     struct arg_end* end;
 } _golioth_set_args;
 
-static int heap(int argc, char **argv);
-static int version(int argc, char **argv);
-static int restart(int argc, char **argv);
-static int tasks(int argc, char **argv);
-static int wifi_set(int argc, char **argv);
-static int wifi_get(int argc, char **argv);
-static int wifi_erase(int argc, char **argv);
-static int golioth_set(int argc, char **argv);
-static int golioth_get(int argc, char **argv);
-static int golioth_erase(int argc, char **argv);
+static int heap(int argc, char** argv);
+static int version(int argc, char** argv);
+static int restart(int argc, char** argv);
+static int tasks(int argc, char** argv);
+static int wifi_set(int argc, char** argv);
+static int wifi_get(int argc, char** argv);
+static int wifi_erase(int argc, char** argv);
+static int golioth_set(int argc, char** argv);
+static int golioth_get(int argc, char** argv);
+static int golioth_erase(int argc, char** argv);
 
 static const esp_console_cmd_t _cmds[] = {
-    {
-        .command = "heap",
-        .help = "Get the current size of free heap memory, and min ever heap size",
-        .hint = NULL,
-        .func = heap,
-    },
-    {
-        .command = "version",
-        .help = "Get version of chip and SDK",
-        .hint = NULL,
-        .func = version,
-    },
-    {
-        .command = "restart",
-        .help = "Software reset of the chip",
-        .hint = NULL,
-        .func = restart,
-    },
-    {
-        .command = "tasks",
-        .help = "Get information about running tasks and stack high watermark (HWM)",
-        .hint = NULL,
-        .func = tasks,
-    },
-    {
-        .command = "wifi_set",
-        .help = "Set WiFi SSID/password",
-        .hint = NULL,
-        .func = wifi_set,
-        .argtable = &_wifi_set_args,
-    },
-    {
-        .command = "wifi_get",
-        .help = "Get WiFi SSID/password",
-        .hint = NULL,
-        .func = wifi_get,
-    },
-    {
-        .command = "wifi_erase",
-        .help = "Erase WiFi SSID/password",
-        .hint = NULL,
-        .func = wifi_erase,
-    },
-    {
-        .command = "golioth_set",
-        .help = "Set Golioth PSK-ID/PSK",
-        .hint = NULL,
-        .func = golioth_set,
-        .argtable = &_golioth_set_args,
-    },
-    {
-        .command = "golioth_get",
-        .help = "Get Golioth PSK-ID/PSK",
-        .hint = NULL,
-        .func = golioth_get,
-    },
-    {
-        .command = "golioth_erase",
-        .help = "Erase Golioth PSK-ID/PSK",
-        .hint = NULL,
-        .func = golioth_erase,
-    },
+        {
+                .command = "heap",
+                .help = "Get the current size of free heap memory, and min ever heap size",
+                .hint = NULL,
+                .func = heap,
+        },
+        {
+                .command = "version",
+                .help = "Get version of chip and SDK",
+                .hint = NULL,
+                .func = version,
+        },
+        {
+                .command = "restart",
+                .help = "Software reset of the chip",
+                .hint = NULL,
+                .func = restart,
+        },
+        {
+                .command = "tasks",
+                .help = "Get information about running tasks and stack high watermark (HWM)",
+                .hint = NULL,
+                .func = tasks,
+        },
+        {
+                .command = "wifi_set",
+                .help = "Set WiFi SSID/password",
+                .hint = NULL,
+                .func = wifi_set,
+                .argtable = &_wifi_set_args,
+        },
+        {
+                .command = "wifi_get",
+                .help = "Get WiFi SSID/password",
+                .hint = NULL,
+                .func = wifi_get,
+        },
+        {
+                .command = "wifi_erase",
+                .help = "Erase WiFi SSID/password",
+                .hint = NULL,
+                .func = wifi_erase,
+        },
+        {
+                .command = "golioth_set",
+                .help = "Set Golioth PSK-ID/PSK",
+                .hint = NULL,
+                .func = golioth_set,
+                .argtable = &_golioth_set_args,
+        },
+        {
+                .command = "golioth_get",
+                .help = "Get Golioth PSK-ID/PSK",
+                .hint = NULL,
+                .func = golioth_get,
+        },
+        {
+                .command = "golioth_erase",
+                .help = "Erase Golioth PSK-ID/PSK",
+                .hint = NULL,
+                .func = golioth_erase,
+        },
 };
 
-static int heap(int argc, char **argv) {
+static int heap(int argc, char** argv) {
     printf("Free: %d, Free low watermark: %d\n",
-            esp_get_free_heap_size(),
-            heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
+           esp_get_free_heap_size(),
+           heap_caps_get_minimum_free_size(MALLOC_CAP_DEFAULT));
     return 0;
 }
 
-static int version(int argc, char **argv) {
+static int version(int argc, char** argv) {
     esp_chip_info_t info;
     esp_chip_info(&info);
     printf("IDF Version:%s\r\n", esp_get_idf_version());
@@ -123,19 +123,20 @@ static int version(int argc, char **argv) {
            info.features & CHIP_FEATURE_BLE ? "/BLE" : "",
            info.features & CHIP_FEATURE_BT ? "/BT" : "",
            info.features & CHIP_FEATURE_EMB_FLASH ? "/Embedded-Flash:" : "/External-Flash:",
-           spi_flash_get_chip_size() / (1024 * 1024), " MB");
+           spi_flash_get_chip_size() / (1024 * 1024),
+           " MB");
     printf("\trevision number:%d\r\n", info.revision);
     return 0;
 }
 
-static int restart(int argc, char **argv) {
+static int restart(int argc, char** argv) {
     ESP_LOGI(TAG, "Restarting");
     esp_restart();
 }
 
-static int tasks(int argc, char **argv) {
+static int tasks(int argc, char** argv) {
     const size_t bytes_per_task = 40;
-    char *task_list_buffer = malloc(uxTaskGetNumberOfTasks() * bytes_per_task);
+    char* task_list_buffer = malloc(uxTaskGetNumberOfTasks() * bytes_per_task);
     if (task_list_buffer == NULL) {
         ESP_LOGE(TAG, "failed to allocate buffer for vTaskList output");
         return 1;
@@ -148,7 +149,7 @@ static int tasks(int argc, char **argv) {
     return 0;
 }
 
-static int wifi_set(int argc, char **argv) {
+static int wifi_set(int argc, char** argv) {
     int nerrors = arg_parse(argc, argv, (void**)&_wifi_set_args);
     if (nerrors != 0) {
         arg_print_errors(stderr, _wifi_set_args.end, argv[0]);
@@ -165,7 +166,7 @@ static int wifi_set(int argc, char **argv) {
     return 0;
 }
 
-static int wifi_get(int argc, char **argv) {
+static int wifi_get(int argc, char** argv) {
     printf("SSID: %s\n", nvs_read_wifi_ssid());
 
     const char* password = nvs_read_wifi_password();
@@ -178,14 +179,14 @@ static int wifi_get(int argc, char **argv) {
     return 0;
 }
 
-static int wifi_erase(int argc, char **argv) {
+static int wifi_erase(int argc, char** argv) {
     nvs_erase_str(NVS_WIFI_SSID_KEY);
     nvs_erase_str(NVS_WIFI_PASS_KEY);
     ESP_LOGI(TAG, "Erase SSID and password from NVS");
     return 0;
 }
 
-static int golioth_set(int argc, char **argv) {
+static int golioth_set(int argc, char** argv) {
     int nerrors = arg_parse(argc, argv, (void**)&_golioth_set_args);
     if (nerrors != 0) {
         arg_print_errors(stderr, _golioth_set_args.end, argv[0]);
@@ -202,14 +203,14 @@ static int golioth_set(int argc, char **argv) {
     return 0;
 }
 
-static int golioth_erase(int argc, char **argv) {
+static int golioth_erase(int argc, char** argv) {
     nvs_erase_str(NVS_GOLIOTH_PSK_ID_KEY);
     nvs_erase_str(NVS_GOLIOTH_PSK_KEY);
     ESP_LOGI(TAG, "Erase PSK ID and PSK from NVS");
     return 0;
 }
 
-static int golioth_get(int argc, char **argv) {
+static int golioth_get(int argc, char** argv) {
     printf("PSK-ID: %s\n", nvs_read_golioth_psk_id());
 
     const char* psk = nvs_read_golioth_psk();
@@ -227,7 +228,8 @@ static void initialize_argtables() {
     _wifi_set_args.password = arg_str1(NULL, NULL, "<pass>", "Password/PSK of AP");
     _wifi_set_args.end = arg_end(2);
 
-    _golioth_set_args.psk_id = arg_str1(NULL, NULL, "<psk_id>", "Pre-shared key ID (contains @ character)");
+    _golioth_set_args.psk_id =
+            arg_str1(NULL, NULL, "<psk_id>", "Pre-shared key ID (contains @ character)");
     _golioth_set_args.psk = arg_str1(NULL, NULL, "<psk>", "Pre-shared key");
     _golioth_set_args.end = arg_end(2);
 }
@@ -239,34 +241,31 @@ static void initialize_console(void) {
     esp_vfs_dev_uart_port_set_rx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_CR);
     esp_vfs_dev_uart_port_set_tx_line_endings(CONFIG_ESP_CONSOLE_UART_NUM, ESP_LINE_ENDINGS_CRLF);
     const uart_config_t uart_config = {
-            .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE,
-            .data_bits = UART_DATA_8_BITS,
-            .parity = UART_PARITY_DISABLE,
-            .stop_bits = UART_STOP_BITS_1,
+        .baud_rate = CONFIG_ESP_CONSOLE_UART_BAUDRATE,
+        .data_bits = UART_DATA_8_BITS,
+        .parity = UART_PARITY_DISABLE,
+        .stop_bits = UART_STOP_BITS_1,
 #if CONFIG_IDF_TARGET_ESP32 || CONFIG_IDF_TARGET_ESP32S2
         .source_clk = UART_SCLK_REF_TICK,
 #else
         .source_clk = UART_SCLK_XTAL,
 #endif
     };
-    ESP_ERROR_CHECK( uart_driver_install(CONFIG_ESP_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0));
-    ESP_ERROR_CHECK( uart_param_config(CONFIG_ESP_CONSOLE_UART_NUM, &uart_config));
+    ESP_ERROR_CHECK(uart_driver_install(CONFIG_ESP_CONSOLE_UART_NUM, 256, 0, 0, NULL, 0));
+    ESP_ERROR_CHECK(uart_param_config(CONFIG_ESP_CONSOLE_UART_NUM, &uart_config));
     esp_vfs_dev_uart_use_driver(CONFIG_ESP_CONSOLE_UART_NUM);
     esp_console_config_t console_config = {
-            .max_cmdline_args = 8,
-            .max_cmdline_length = 256,
-            .hint_color = atoi(LOG_COLOR_CYAN)
-    };
-    ESP_ERROR_CHECK( esp_console_init(&console_config));
+            .max_cmdline_args = 8, .max_cmdline_length = 256, .hint_color = atoi(LOG_COLOR_CYAN)};
+    ESP_ERROR_CHECK(esp_console_init(&console_config));
     linenoiseSetMultiLine(1);
     linenoiseSetCompletionCallback(&esp_console_get_completion);
-    linenoiseSetHintsCallback((linenoiseHintsCallback*) &esp_console_get_hint);
+    linenoiseSetHintsCallback((linenoiseHintsCallback*)&esp_console_get_hint);
     linenoiseHistorySetMaxLen(100);
     linenoiseSetMaxLineLen(console_config.max_cmdline_length);
     linenoiseAllowEmpty(false);
 }
 
-static void shell_task(void *arg) {
+static void shell_task(void* arg) {
     initialize_console();
     esp_console_register_help_command();
 
@@ -293,7 +292,7 @@ static void shell_task(void *arg) {
         prompt = PROMPT_STR "> ";
     }
 
-    while(true) {
+    while (true) {
         char* line = linenoise(prompt);
         if (line == NULL) {
             continue;
@@ -336,4 +335,3 @@ void shell_init(void) {
         }
     }
 }
-

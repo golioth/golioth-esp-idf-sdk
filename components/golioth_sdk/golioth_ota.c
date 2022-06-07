@@ -22,7 +22,8 @@ size_t golioth_ota_size_to_nblocks(size_t component_size) {
     return nblocks;
 }
 
-const golioth_ota_component_t* golioth_ota_find_component(const golioth_ota_manifest_t* manifest, const char* package) {
+const golioth_ota_component_t*
+golioth_ota_find_component(const golioth_ota_manifest_t* manifest, const char* package) {
     // Scan the manifest until we find the component with matching package.
     const golioth_ota_component_t* found = NULL;
     for (int i = 0; i < manifest->num_components; i++) {
@@ -36,17 +37,15 @@ const golioth_ota_component_t* golioth_ota_find_component(const golioth_ota_mani
     return found;
 }
 
-golioth_status_t golioth_ota_observe_manifest_async(
-        golioth_client_t client,
-        golioth_get_cb_fn callback,
-        void* arg) {
+<<<<<<< Updated upstream
+golioth_status_t
+golioth_ota_observe_manifest_async(golioth_client_t client, golioth_get_cb_fn callback, void* arg) {
+=======
+golioth_status_t
+golioth_ota_observe_manifest(golioth_client_t client, golioth_get_cb_fn callback, void* arg) {
+>>>>>>> Stashed changes
     return golioth_coap_client_observe_async(
-            client,
-            "",
-            GOLIOTH_OTA_MANIFEST_PATH,
-            COAP_MEDIATYPE_APPLICATION_JSON,
-            callback,
-            arg);
+            client, "", GOLIOTH_OTA_MANIFEST_PATH, COAP_MEDIATYPE_APPLICATION_JSON, callback, arg);
 }
 
 golioth_status_t golioth_ota_report_state_sync(
@@ -163,11 +162,12 @@ golioth_status_t golioth_ota_get_block_sync(
         size_t block_index,
         uint8_t* buf,  // must be at least GOLIOTH_OTA_BLOCKSIZE bytes
         size_t* block_nbytes) {
-    char path[CONFIG_GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN + CONFIG_GOLIOTH_OTA_MAX_VERSION_LEN + 2] = {};
+    char path[CONFIG_GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN + CONFIG_GOLIOTH_OTA_MAX_VERSION_LEN + 2] =
+            {};
     snprintf(path, sizeof(path), "%s@%s", package, version);
     block_get_output_params_t out_params = {
-        .buf = buf,
-        .block_nbytes = block_nbytes,
+            .buf = buf,
+            .block_nbytes = block_nbytes,
     };
 
     golioth_status_t status = GOLIOTH_OK;

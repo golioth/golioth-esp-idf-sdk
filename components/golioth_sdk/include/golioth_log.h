@@ -10,6 +10,8 @@ typedef enum {
     GOLIOTH_LOG_LEVEL_DEBUG
 } golioth_log_level_t;
 
+// clang-format off
+
 // Async APIs (non-blocking)
 golioth_status_t golioth_log_error_async(golioth_client_t client, const char* tag, const char* log_message);
 golioth_status_t golioth_log_warn_async(golioth_client_t client, const char* tag, const char* log_message);
@@ -21,3 +23,5 @@ golioth_status_t golioth_log_error_sync(golioth_client_t client, const char* tag
 golioth_status_t golioth_log_warn_sync(golioth_client_t client, const char* tag, const char* log_message);
 golioth_status_t golioth_log_info_sync(golioth_client_t client, const char* tag, const char* log_message);
 golioth_status_t golioth_log_debug_sync(golioth_client_t client, const char* tag, const char* log_message);
+
+// clang-format on
