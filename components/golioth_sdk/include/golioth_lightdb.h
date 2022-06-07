@@ -42,11 +42,10 @@ golioth_status_t golioth_lightdb_stream_set_float_async(golioth_client_t client,
 golioth_status_t golioth_lightdb_stream_set_string_async(golioth_client_t client, const char* path, const char* str, size_t str_len);
 golioth_status_t golioth_lightdb_stream_set_json_async(golioth_client_t client, const char* path, const char* json_str, size_t json_str_len);
 
-// clang-format on
-
 golioth_status_t golioth_lightdb_stream_set_int_sync(golioth_client_t client, const char* path, int32_t value);
 golioth_status_t golioth_lightdb_stream_set_bool_sync(golioth_client_t client, const char* path, bool value);
 golioth_status_t golioth_lightdb_stream_set_float_sync(golioth_client_t client, const char* path, float value);
 golioth_status_t golioth_lightdb_stream_set_string_sync(golioth_client_t client, const char* path, const char* str, size_t str_len);
 golioth_status_t golioth_lightdb_stream_set_json_sync(golioth_client_t client, const char* path, const char* json_str, size_t json_str_len);
 
+//clang-format on
