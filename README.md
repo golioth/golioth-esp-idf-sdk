@@ -12,13 +12,9 @@ and run in the latest release of esp-idf
 Install the latest release of esp-idf using the
 [installation directions from Espressif](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html#installation)
 
-## Trying the examples
+## Trying the example
 
-The `examples` directory contains several examples which you can build and
-run.
-
-There are READMEs in each example with detailed instructions, but they
-generally follow the same patterns to configure, build, flash, and run.
+The `example` directory contains an example app which you can build and run.
 
 First, setup the environment. If you've installed esp-idf using Windows
 or an IDE plugin, you can usually skip this step, as the environment
@@ -30,16 +26,16 @@ source ~/esp/esp-idf/export.sh
 ```
 
 By default, esp-idf assumes the target is `esp32`, but if you have a different
-target, such as the `esp32s3`, set the target in your environment:
+target, such as the `esp32s3`, set the target:
 
 ```sh
-export IDF_TARGET=esp32s3
+idf.py set-target esp32s3
 ```
 
 Next, `cd` to the example directory:
 
 ```
-cd examples/X
+cd example/X
 ```
 
 Configure (optional):
@@ -57,11 +53,11 @@ idf.py build
 Flash (change port to match your system):
 
 ```sh
-idf.py -p /dev/ttyACM0 flash
+idf.py -p /dev/ttyUSB0 flash
 ```
 
 Monitor (connects to ESP32 serial port):
 
 ```sh
-idf.py -p /dev/ttyACM0 monitor
+idf.py -p /dev/ttyUSB0 monitor
 ```
