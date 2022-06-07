@@ -37,13 +37,8 @@ golioth_ota_find_component(const golioth_ota_manifest_t* manifest, const char* p
     return found;
 }
 
-<<<<<<< Updated upstream
 golioth_status_t
 golioth_ota_observe_manifest_async(golioth_client_t client, golioth_get_cb_fn callback, void* arg) {
-=======
-golioth_status_t
-golioth_ota_observe_manifest(golioth_client_t client, golioth_get_cb_fn callback, void* arg) {
->>>>>>> Stashed changes
     return golioth_coap_client_observe_async(
             client, "", GOLIOTH_OTA_MANIFEST_PATH, COAP_MEDIATYPE_APPLICATION_JSON, callback, arg);
 }

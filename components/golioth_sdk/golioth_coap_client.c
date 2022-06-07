@@ -749,15 +749,9 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
 
     new_client->keepalive_timer = xTimerCreate(
             "keepalive",
-<<<<<<< Updated upstream
             max(1000, 1000 * CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_S) / portTICK_PERIOD_MS,
             pdTRUE,      // auto-reload
             new_client,  // pvTimerID
-=======
-            max(1000, CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_MS) / portTICK_PERIOD_MS,
-            pdTRUE,      // auto-reload
-            new_client,  // pvTimerID
->>>>>>> Stashed changes
             on_keepalive);
     if (!new_client->keepalive_timer) {
         ESP_LOGE(TAG, "Failed to create keepalive timer");

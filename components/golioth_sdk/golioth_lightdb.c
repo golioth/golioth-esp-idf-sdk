@@ -184,7 +184,6 @@ bool golioth_payload_is_null(const uint8_t* payload, size_t payload_size) {
     return false;
 }
 
-<<<<<<< Updated upstream
 golioth_status_t
 golioth_lightdb_set_int_async(golioth_client_t client, const char* path, int32_t value) {
     return golioth_lightdb_set_int_internal(
@@ -228,48 +227,6 @@ golioth_status_t golioth_lightdb_get_async(
         void* arg) {
     return golioth_lightdb_get_internal(
             client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, callback, arg, false);
-=======
-golioth_status_t golioth_lightdb_set_int(golioth_client_t client, const char* path, int32_t value) {
-    return golioth_lightdb_set_int_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, false);
-}
-
-golioth_status_t golioth_lightdb_set_bool(golioth_client_t client, const char* path, bool value) {
-    return golioth_lightdb_set_bool_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, false);
-}
-
-golioth_status_t golioth_lightdb_set_float(golioth_client_t client, const char* path, float value) {
-    return golioth_lightdb_set_float_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, false);
-}
-
-golioth_status_t golioth_lightdb_set_string(
-        golioth_client_t client,
-        const char* path,
-        const char* str,
-        size_t str_len) {
-    return golioth_lightdb_set_string_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, str, str_len, false);
-}
-
-golioth_status_t golioth_lightdb_set_json(
-        golioth_client_t client,
-        const char* path,
-        const char* json_str,
-        size_t json_str_len) {
-    return golioth_lightdb_set_json_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, json_str, json_str_len, false);
-}
-
-golioth_status_t golioth_lightdb_get(
-        golioth_client_t client,
-        const char* path,
-        golioth_get_cb_fn callback,
-        void* arg) {
-    return golioth_lightdb_get_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, callback, arg, false);
->>>>>>> Stashed changes
 }
 
 golioth_status_t golioth_lightdb_delete_async(golioth_client_t client, const char* path) {
