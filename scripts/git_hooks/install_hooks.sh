@@ -1,10 +1,8 @@
 #!/bin/bash -e
 
-# change to this script's directory
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR"
-
-REPO_ROOT=../..
+THIS_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$THIS_DIR"
+REPO_ROOT="../.."
 
 # get the git base directory
 mkdir -p "$REPO_ROOT/.git/hooks"
