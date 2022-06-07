@@ -1,0 +1,29 @@
+name: Firmware Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository and submodules
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+        architecture: 'x64'
+    - name: Check code formatting
+      shell: bash
+      run: |
+        git fetch --no-recurse-submodules
+        echo "Checking code format"
+        sudo apt install clang-format
+        REPO_ROOT=`pwd` ./scripts/lint/ci_check_clang_format.sh
+    # TODO - clone and install esp-idf
+    # TODO - build example project
