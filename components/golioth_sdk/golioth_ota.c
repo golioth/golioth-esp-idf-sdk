@@ -36,7 +36,7 @@ const golioth_ota_component_t* golioth_ota_find_component(const golioth_ota_mani
     return found;
 }
 
-golioth_status_t golioth_ota_observe_manifest(
+golioth_status_t golioth_ota_observe_manifest_async(
         golioth_client_t client,
         golioth_get_cb_fn callback,
         void* arg) {
@@ -49,7 +49,7 @@ golioth_status_t golioth_ota_observe_manifest(
             arg);
 }
 
-golioth_status_t golioth_ota_report_state(
+golioth_status_t golioth_ota_report_state_sync(
         golioth_client_t client,
         golioth_ota_state_t state,
         golioth_ota_reason_t reason,
@@ -156,7 +156,7 @@ static void on_block_rcvd(
     *out_params->block_nbytes = payload_size;
 }
 
-golioth_status_t golioth_ota_get_block(
+golioth_status_t golioth_ota_get_block_sync(
         golioth_client_t client,
         const char* package,
         const char* version,

@@ -27,10 +27,10 @@ static void on_my_setting(golioth_client_t client, const char* path, const uint8
     int32_t desired_value = golioth_payload_as_int(payload, payload_size);
     ESP_LOGI(TAG, "Cloud desires %s = %d. Setting now.", path, desired_value);
     *actual_value_ptr = desired_value;
-    golioth_lightdb_delete(client, path);
+    golioth_lightdb_delete_async(client, path);
 }
 
-static void example_json_set(golioth_client_t client) {
+static void example_json_set_async(golioth_client_t client) {
     char jsonbuf[128] = {};
     cJSON* json = cJSON_CreateObject();
     cJSON_AddNumberToObject(json, "a_float", 3.5f);
@@ -40,7 +40,7 @@ static void example_json_set(golioth_client_t client) {
     bool printed = cJSON_PrintPreallocated(json, jsonbuf, sizeof(jsonbuf) - 5, false);
     assert(printed);
     cJSON_Delete(json);
-    golioth_lightdb_set_json(client, "example_json", jsonbuf, strlen(jsonbuf));
+    golioth_lightdb_set_json_async(client, "example_json", jsonbuf, strlen(jsonbuf));
 }
 
 static void on_example_json(golioth_client_t client, const char* path, const uint8_t* payload, size_t payload_size, void* arg) {
@@ -98,7 +98,7 @@ void app_main(void) {
     // If that happens, we will update the value and delete the path to indicate
     // the desired setting was applied.
     int32_t my_setting = 0;
-    golioth_lightdb_observe(client, "desired/my_setting", on_my_setting, &my_setting);
+    golioth_lightdb_observe_async(client, "desired/my_setting", on_my_setting, &my_setting);
 
     while (1) {
         // Synchronous API (blocks until server responds or times out)
@@ -115,15 +115,15 @@ void app_main(void) {
         ESP_LOGI(TAG, "End of synchronous example");
 
         // Asynchronous API (non-blocking, doesn't wait for server response)
-        golioth_log_info(client, TAG, "This is a message");
-        golioth_lightdb_set_int(client, "iteration", iteration);
-        golioth_lightdb_set_int(client, "my_setting", my_setting);
-        golioth_lightdb_set_bool(client, "bool_toggle", bool_toggle);
-        golioth_lightdb_set_float(client, "float_value", float_value);
-        golioth_lightdb_set_string(client, "string_value", string_value, strlen(string_value));
-        golioth_lightdb_get(client, "float_value", on_float_value, NULL);
-        example_json_set(client);
-        golioth_lightdb_get(client, "example_json", on_example_json, NULL);
+        golioth_log_info_async(client, TAG, "This is a message");
+        golioth_lightdb_set_int_async(client, "iteration", iteration);
+        golioth_lightdb_set_int_async(client, "my_setting", my_setting);
+        golioth_lightdb_set_bool_async(client, "bool_toggle", bool_toggle);
+        golioth_lightdb_set_float_async(client, "float_value", float_value);
+        golioth_lightdb_set_string_async(client, "string_value", string_value, strlen(string_value));
+        golioth_lightdb_get_async(client, "float_value", on_float_value, NULL);
+        example_json_set_async(client);
+        golioth_lightdb_get_async(client, "example_json", on_example_json, NULL);
 
         // LightDB Stream
         ESP_LOGI(TAG, "LDB Stream set randint");

@@ -49,20 +49,20 @@ const golioth_ota_component_t* golioth_ota_find_component(
         const char* package);
 
 // Asynchronous
-golioth_status_t golioth_ota_observe_manifest(
+golioth_status_t golioth_ota_observe_manifest_async(
         golioth_client_t client,
         golioth_get_cb_fn callback,
         void* arg);
 
 // Synchronous (wait for server response)
-golioth_status_t golioth_ota_get_block(
+golioth_status_t golioth_ota_get_block_sync(
         golioth_client_t client,
         const char* package,
         const char* version,
         size_t block_index,
         uint8_t* buf,  // must be at least GOLIOTH_OTA_BLOCKSIZE bytes
         size_t* block_nbytes);
-golioth_status_t golioth_ota_report_state(
+golioth_status_t golioth_ota_report_state_sync(
         golioth_client_t client,
         golioth_ota_state_t state,
         golioth_ota_reason_t reason,

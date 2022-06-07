@@ -68,7 +68,7 @@ static void fw_update_rollback_and_reboot(void) {
 
 static void fw_update_cancel_rollback(void) {
     ESP_LOGI(TAG, "State = Idle");
-    golioth_ota_report_state(
+    golioth_ota_report_state_sync(
             _client,
             GOLIOTH_OTA_STATE_UPDATING,
             GOLIOTH_OTA_REASON_FIRMWARE_UPDATED_SUCCESSFULLY,
@@ -95,7 +95,7 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
     esp_err_t err = ESP_OK;
 
     ESP_LOGI(TAG, "State = Downloading");
-    golioth_ota_report_state(
+    golioth_ota_report_state_sync(
             _client,
             GOLIOTH_OTA_STATE_DOWNLOADING,
             GOLIOTH_OTA_REASON_READY,
@@ -118,7 +118,7 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
 
         printf("\rfw_update: Getting block index %d (%d/%d)", i, i + 1, nblocks);
 
-        golioth_status_t status = golioth_ota_get_block(
+        golioth_status_t status = golioth_ota_get_block_sync(
                 _client,
                 _main_component->package,
                 _main_component->version,
@@ -164,7 +164,7 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
         ESP_LOGE(TAG, "Download interrupted, wrote %zu of %zu bytes",
                 bytes_written, _main_component->size);
         ESP_LOGI(TAG, "State = Idle");
-        golioth_ota_report_state(
+        golioth_ota_report_state_sync(
                 _client,
                 GOLIOTH_OTA_STATE_IDLE,
                 GOLIOTH_OTA_REASON_FIRMWARE_UPDATE_FAILED,
@@ -188,7 +188,7 @@ static golioth_status_t fw_update_validate(void) {
         }
 
         ESP_LOGI(TAG, "State = Idle");
-        golioth_ota_report_state(
+        golioth_ota_report_state_sync(
                 _client,
                 GOLIOTH_OTA_STATE_IDLE,
                 GOLIOTH_OTA_REASON_INTEGRITY_CHECK_FAILURE,
@@ -199,7 +199,7 @@ static golioth_status_t fw_update_validate(void) {
     }
 
     ESP_LOGI(TAG, "State = Downloaded");
-    golioth_ota_report_state(
+    golioth_ota_report_state_sync(
             _client,
             GOLIOTH_OTA_STATE_DOWNLOADED,
             GOLIOTH_OTA_REASON_READY,
@@ -213,7 +213,7 @@ static golioth_status_t fw_update_change_boot_image(void) {
     assert(_update_partition);
 
     ESP_LOGI(TAG, "State = Updating");
-    golioth_ota_report_state(
+    golioth_ota_report_state_sync(
             _client,
             GOLIOTH_OTA_STATE_UPDATING,
             GOLIOTH_OTA_REASON_READY,
@@ -275,7 +275,7 @@ static void fw_update_task(void *arg) {
         }
     }
 
-    golioth_ota_report_state(
+    golioth_ota_report_state_sync(
             _client,
             GOLIOTH_OTA_STATE_IDLE,
             GOLIOTH_OTA_REASON_READY,
@@ -283,7 +283,7 @@ static void fw_update_task(void *arg) {
             _current_version,
             NULL);
 
-    golioth_ota_observe_manifest(_client, on_ota_manifest, NULL);
+    golioth_ota_observe_manifest_async(_client, on_ota_manifest, NULL);
 
     while (1) {
         ESP_LOGI(TAG, "Waiting to receive OTA manifest");

@@ -11,10 +11,10 @@ typedef enum {
 } golioth_log_level_t;
 
 // Async APIs (non-blocking)
-golioth_status_t golioth_log_error(golioth_client_t client, const char* tag, const char* log_message);
-golioth_status_t golioth_log_warn(golioth_client_t client, const char* tag, const char* log_message);
-golioth_status_t golioth_log_info(golioth_client_t client, const char* tag, const char* log_message);
-golioth_status_t golioth_log_debug(golioth_client_t client, const char* tag, const char* log_message);
+golioth_status_t golioth_log_error_async(golioth_client_t client, const char* tag, const char* log_message);
+golioth_status_t golioth_log_warn_async(golioth_client_t client, const char* tag, const char* log_message);
+golioth_status_t golioth_log_info_async(golioth_client_t client, const char* tag, const char* log_message);
+golioth_status_t golioth_log_debug_async(golioth_client_t client, const char* tag, const char* log_message);
 
 // Sync APIs (blocking, wait for server response or timeout)
 golioth_status_t golioth_log_error_sync(golioth_client_t client, const char* tag, const char* log_message);
