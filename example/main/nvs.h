@@ -22,4 +22,4 @@ const char* nvs_read_golioth_psk(void);
 void nvs_write_str(const char* key, const char* str);
 void nvs_erase_str(const char* key);
 
-bool nvs_credentials_set(void);
+bool nvs_credentials_are_set(void);
