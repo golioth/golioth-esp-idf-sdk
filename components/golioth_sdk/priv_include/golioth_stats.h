@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2022 Golioth, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /// Statistics internal to the Golioth SDK, for debug and troubleshoot of the SDK itself.
 #pragma once
 

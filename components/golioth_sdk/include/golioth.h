@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2022 Golioth, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #pragma once
 
 #include "golioth_status.h"

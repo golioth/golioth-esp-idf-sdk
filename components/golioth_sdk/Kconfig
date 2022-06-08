@@ -1,3 +1,9 @@
+#
+# Copyright (C) 2022 Golioth, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+
 menu "Golioth SDK Configuration"
 
 config GOLIOTH_COAP_HOST_URI

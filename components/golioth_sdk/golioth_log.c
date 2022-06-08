@@ -1,3 +1,8 @@
+/*
+ * Copyright (c) 2022 Golioth, Inc.
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
 #include <esp_log.h>
 #include <cJSON.h>
 #include "golioth_coap_client.h"
