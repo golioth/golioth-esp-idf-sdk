@@ -25,5 +25,9 @@ jobs:
         echo "Checking code format"
         sudo apt install clang-format
         REPO_ROOT=`pwd` ./scripts/lint/ci_check_clang_format.sh
-    # TODO - clone and install esp-idf
-    # TODO - build example project
+    - name: Build example project
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v4.4.1
+        target: esp32
+        path: 'example'
