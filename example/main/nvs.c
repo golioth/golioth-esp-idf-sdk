@@ -46,34 +46,43 @@ const char* nvs_read_golioth_psk(void) {
     return read_nvs_key_or_default(NVS_GOLIOTH_PSK_KEY, buf, sizeof(buf), NVS_DEFAULT_STR);
 }
 
-void nvs_write_str(const char* key, const char* str) {
-    nvs_handle_t handle;
-    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
-    if (err != ESP_OK) {
-        ESP_LOGW(TAG, "nvs_open failed");
-        return;
-    }
-    err = nvs_set_str(handle, key, str);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to set %s to %s, err = %d", key, str, err);
-    }
-    nvs_commit(handle);
-    nvs_close(handle);
+const char* nvs_read_str(const char* key, char* buf, size_t bufsize) {
+    return read_nvs_key_or_default(key, buf, bufsize, NVS_DEFAULT_STR);
 }
 
-void nvs_erase_str(const char* key) {
+bool nvs_write_str(const char* key, const char* str) {
     nvs_handle_t handle;
     esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "nvs_open failed");
-        return;
+        return false;
     }
-    err = nvs_erase_key(handle, key);
-    if (err != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to erase key %s, err = %d", key, err);
-    }
+    err = nvs_set_str(handle, key, str);
     nvs_commit(handle);
     nvs_close(handle);
+
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to set %s to %s, err = %d", key, str, err);
+        return false;
+    }
+    return true;
+}
+
+bool nvs_erase_str(const char* key) {
+    nvs_handle_t handle;
+    esp_err_t err = nvs_open(NVS_NAMESPACE, NVS_READWRITE, &handle);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "nvs_open failed");
+        return false;
+    }
+    err = nvs_erase_key(handle, key);
+    nvs_commit(handle);
+    nvs_close(handle);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to erase key %s, err = %d", key, err);
+        return false;
+    }
+    return true;
 }
 
 bool nvs_credentials_are_set(void) {
