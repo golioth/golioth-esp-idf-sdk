@@ -705,7 +705,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
     if (!_initialized) {
         // Connect logs from libcoap to the ESP logger
         coap_set_log_handler(coap_log_handler);
-        coap_set_log_level(7);  // 3: error, 4: warning, 6: info, 7: debug, 9:mbedtls
+        coap_set_log_level(6);  // 3: error, 4: warning, 6: info, 7: debug, 9:mbedtls
 
         // Seed the random number generator. Used for token generation.
         time_t t;

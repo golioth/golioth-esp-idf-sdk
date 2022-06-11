@@ -21,13 +21,6 @@
 #define PROMPT_STR CONFIG_IDF_TARGET
 #define COUNT_OF(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t)(!(sizeof(x) % sizeof(0 [x])))))
 
-static struct {
-    struct arg_str* command;
-    struct arg_str* key;
-    struct arg_str* value;
-    struct arg_end* end;
-} _settings_args;
-
 static int heap(int argc, char** argv);
 static int version(int argc, char** argv);
 static int restart(int argc, char** argv);
@@ -64,7 +57,6 @@ static const esp_console_cmd_t _cmds[] = {
                 .help = "Get/Set/Erase settings by key",
                 .hint = NULL,
                 .func = settings,
-                .argtable = &_settings_args,
         },
 };
 
@@ -126,54 +118,80 @@ static const char* cli_key_to_nvs_key(const char* key) {
     } else if (0 == strcmp(key, "golioth/psk")) {
         return NVS_GOLIOTH_PSK_KEY;
     } else {
-        return NULL;
+        return "unknown";
     }
 }
 
 static int settings(int argc, char** argv) {
-    int nerrors = arg_parse(argc, argv, (void**)&_settings_args);
-    if (nerrors != 0) {
-        arg_print_errors(stderr, _settings_args.end, argv[0]);
+    const char* usage =
+            "usage:\n"
+            "  settings get <key> [--json]\n"
+            "  settings set <key> <value> [--json]\n"
+            "  settings erase <key>\n";
+
+    if (argc < 3) {
+        printf(usage);
         return 1;
     }
 
-    const char* command = _settings_args.command->sval[0];
-    const char* cli_key = _settings_args.key->sval[0];
-    const char* value = _settings_args.value->sval[0];
-
+    const char* command = argv[1];
+    const char* cli_key = argv[2];
     const char* nvs_key = cli_key_to_nvs_key(cli_key);
-    if (nvs_key == NULL) {
-        ESP_LOGE(TAG, "Unknown key: %s", cli_key);
-        return 1;
-    }
 
     if (0 == strcmp(command, "get")) {
         char valuebuf[128] = {};
-        nvs_read_str(nvs_key, valuebuf, sizeof(valuebuf));
-        ESP_LOGI(TAG, "%s: %s", cli_key, valuebuf);
+        const char* value = nvs_read_str(nvs_key, valuebuf, sizeof(valuebuf));
+        bool was_not_found = (0 == strcmp(value, NVS_DEFAULT_STR));
+        bool json_output = ((argc >= 4) && (0 == strcmp(argv[3], "--json")));
+        if (json_output) {
+            if (was_not_found) {
+                printf("{\"status\": \"failed\", \"msg\": \"setting not found\"}\n");
+            } else {
+                printf("{\"status\": \"success\", \"value\": \"%s\"}\n", value);
+            }
+        } else {
+            if (was_not_found) {
+                printf("Setting not found\n");
+            } else {
+                printf("%s\n", value);
+            }
+        }
     } else if (0 == strcmp(command, "set")) {
+        if (argc < 4) {
+            printf(usage);
+            return 1;
+        }
+        const char* value = argv[3];
         bool success = nvs_write_str(nvs_key, value);
-        if (success) {
-            ESP_LOGI(TAG, "Saved key %s to NVS", cli_key);
+        bool json_output = ((argc >= 5) && (0 == strcmp(argv[4], "--json")));
+        if (json_output) {
+            if (success) {
+                printf("{\"status\": \"success\", \"msg\": \"setting %s saved as %s\"}\n",
+                       cli_key,
+                       value);
+            } else {
+                printf("{\"status\": \"failed\", \"msg\": \"failed to save setting %s:%s\"}\n",
+                       cli_key,
+                       value);
+            }
+        } else {
+            if (success) {
+                printf("Setting %s saved as %s\n", cli_key, value);
+            } else {
+                printf("Failed to save setting %s:%s\n", cli_key, value);
+            }
         }
     } else if (0 == strcmp(command, "erase")) {
         bool success = nvs_erase_str(nvs_key);
         if (success) {
-            ESP_LOGI(TAG, "Erased key %s from NVS", cli_key);
+            printf("Erased key %s from NVS", cli_key);
         }
     } else {
-        ESP_LOGE(TAG, "Invalid command: %s. Must be get, set, or erase.", command);
+        printf(usage);
         return 1;
     }
 
     return 0;
-}
-
-static void initialize_argtables() {
-    _settings_args.command = arg_str1(NULL, NULL, "<command>", "get, set, or erase");
-    _settings_args.key = arg_str1(NULL, NULL, "<key>", "Key of setting");
-    _settings_args.value = arg_str0(NULL, NULL, "<value>", "Value of setting");
-    _settings_args.end = arg_end(2);
 }
 
 static void initialize_console(void) {
@@ -210,8 +228,6 @@ static void initialize_console(void) {
 static void shell_task(void* arg) {
     initialize_console();
     esp_console_register_help_command();
-
-    initialize_argtables();
 
     for (int i = 0; i < COUNT_OF(_cmds); i++) {
         ESP_ERROR_CHECK(esp_console_cmd_register(&_cmds[i]));
