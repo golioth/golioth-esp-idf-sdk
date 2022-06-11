@@ -1,0 +1,29 @@
+menu "Golioth Application Configuration"
+
+config GOLIOTH_EXAMPLE_WIFI_SSID
+    string "WiFi SSID"
+    default "myssid"
+    help
+        SSID of WiFi access point to connect to
+
+config GOLIOTH_EXAMPLE_WIFI_PSK
+    string "WiFi PSK/password"
+    default "supersecret"
+    help
+        The pre-shared key of the WiFi AP (aka password)
+
+config GOLIOTH_EXAMPLE_COAP_PSK_ID
+    string "CoAP PSK ID"
+    default "deviceid@project"
+    help
+        The pre-shared key ID to use when connecting
+        to the CoAP server over DTLS
+
+config GOLIOTH_EXAMPLE_COAP_PSK
+    string "CoAP PSK"
+    default "supersecret"
+    help
+        The pre-shared key to use when connecting
+        to the CoAP server over DTLS
+
+endmenu

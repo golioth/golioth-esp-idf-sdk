@@ -1,0 +1,9 @@
+idf_component_register(
+    SRCS
+        "app_main.c"
+        "wifi.c"
+    PRIV_REQUIRES
+        "golioth_sdk"
+        "json"
+        "nvs_flash"
+)
