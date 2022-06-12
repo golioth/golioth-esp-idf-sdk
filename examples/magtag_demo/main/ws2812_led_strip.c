@@ -19,12 +19,6 @@
 
 #define EXAMPLE_CHASE_SPEED_MS (250)
 
-const led_strip_rgb_t BLACK = {.r = 0x00, .g = 0x00, .b = 0x00};
-const led_strip_rgb_t RED = {.r = 0xFF, .g = 0x00, .b = 0x00};
-const led_strip_rgb_t GREEN = {.r = 0x00, .g = 0xFF, .b = 0x00};
-const led_strip_rgb_t BLUE = {.r = 0x00, .g = 0x00, .b = 0xFF};
-const led_strip_rgb_t YELLOW = {.r = 0xFF, .g = 0xFF, .b = 0x00};
-
 static led_strip_t* _strip;
 
 void ws2812_led_strip_init(void) {
@@ -47,15 +41,7 @@ void ws2812_led_strip_init(void) {
     if (!_strip) {
         ESP_LOGE(TAG, "install WS2812 driver failed");
     }
-    ws2812_led_strip_set_all_rgb(BLACK);
-    ws2812_led_strip_display();
-}
-
-void ws2812_led_strip_set_led(int led_index, uint32_t r, uint32_t g, uint32_t b) {
-    esp_err_t err = _strip->set_pixel(_strip, led_index, r, g, b);
-    if (err != ESP_OK) {
-        ESP_LOGW(TAG, "set_pixel err: %d (%s)", err, esp_err_to_name(err));
-    }
+    ws2812_led_strip_set_all_immediate(BLACK);
 }
 
 void ws2812_led_strip_display(void) {
@@ -65,21 +51,27 @@ void ws2812_led_strip_display(void) {
     }
 }
 
-void ws2812_led_strip_set_led_rgb(int led_index, const led_strip_rgb_t rgb) {
-    ws2812_led_strip_set_led(led_index, rgb.r, rgb.g, rgb.b);
-}
-
-void ws2812_led_strip_set_all(uint32_t r, uint32_t g, uint32_t b) {
-    for (int i = 0; i < LED_STRIP_NUM_RGB_LEDS; i++) {
-        ws2812_led_strip_set_led(i, r, g, b);
+void ws2812_led_strip_set_led(int led_index, uint32_t rgb) {
+    uint32_t r = (rgb & 0xFF0000) >> 16;
+    uint32_t g = (rgb & 0x00FF00) >> 8;
+    uint32_t b = (rgb & 0x0000FF);
+    esp_err_t err = _strip->set_pixel(_strip, led_index, r, g, b);
+    if (err != ESP_OK) {
+        ESP_LOGW(TAG, "set_pixel err: %d (%s)", err, esp_err_to_name(err));
     }
 }
 
-void ws2812_led_strip_set_all_rgb(const led_strip_rgb_t rgb) {
-    ws2812_led_strip_set_all(rgb.r, rgb.g, rgb.b);
+void ws2812_led_strip_set_led_immediate(int led_index, uint32_t rgb) {
+    ws2812_led_strip_set_led(led_index, rgb);
+    ws2812_led_strip_display();
 }
 
-void ws2812_led_strip_set_all_rgb_immediate(const led_strip_rgb_t rgb) {
-    ws2812_led_strip_set_all_rgb(rgb);
+void ws2812_led_strip_set_all(uint32_t rgb) {
+    for (int i = 0; i < LED_STRIP_NUM_RGB_LEDS; i++) {
+        ws2812_led_strip_set_led(i, rgb);
+    }
+}
+void ws2812_led_strip_set_all_immediate(uint32_t rgb) {
+    ws2812_led_strip_set_all(rgb);
     ws2812_led_strip_display();
 }

@@ -28,8 +28,8 @@
 static void on_client_event(golioth_client_t client, golioth_client_event_t event, void* arg) {
     bool connected = (event == GOLIOTH_CLIENT_EVENT_CONNECTED);
     ESP_LOGI(TAG, "Golioth client %s", connected ? "connected" : "disconnected");
-    led_strip_rgb_t rgb = (connected ? GREEN : BLUE);
-    ws2812_led_strip_set_all_rgb_immediate(rgb);
+    uint32_t rgb = (connected ? GREEN : BLUE);
+    ws2812_led_strip_set_all_immediate(rgb);
 }
 
 static void app_gpio_init(void) {
@@ -48,12 +48,12 @@ void app_main(void) {
     gpio_set_level(D13_LED_GPIO_PIN, d13_on);
 
     ws2812_led_strip_init();
-    ws2812_led_strip_set_all_rgb_immediate(YELLOW);
+    ws2812_led_strip_set_all_immediate(YELLOW);
 
     wifi_init(CONFIG_GOLIOTH_EXAMPLE_WIFI_SSID, CONFIG_GOLIOTH_EXAMPLE_WIFI_PSK);
     wifi_wait_for_connected();
 
-    ws2812_led_strip_set_all_rgb_immediate(BLUE);
+    ws2812_led_strip_set_all_immediate(BLUE);
 
     golioth_client_t client = golioth_client_create(
             CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID, CONFIG_GOLIOTH_EXAMPLE_COAP_PSK);
