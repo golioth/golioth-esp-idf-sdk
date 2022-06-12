@@ -14,7 +14,7 @@
 #include "ws2812_led_strip.h"
 #include "golioth.h"
 
-#define TAG "magtag"
+#define TAG "magtag_demo"
 
 // TODO - GPIO buttons
 // TODO - epaper display
