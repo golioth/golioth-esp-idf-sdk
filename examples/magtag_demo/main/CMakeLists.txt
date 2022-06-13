@@ -9,6 +9,8 @@ idf_component_register(
         "led_strip_rmt_ws2812.c"
         "buttons.c"
         "time.c"
+        "i2c.c"
+        "lis3dh.c"
         "epaper/epaper.c"
         "epaper/EPD_2in9d.c"
         "epaper/ImageData.c"

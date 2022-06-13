@@ -25,3 +25,8 @@
 #define EPAPER_MOSI 35
 #define EPAPER_SCLK 36
 #define EPAPER_MISO 37
+
+// Accelerometer, LIS3DH
+#define I2C_SCL_PIN 34
+#define I2C_SDA_PIN 33
+#define LIS3DH_I2C_ADDR 0x19

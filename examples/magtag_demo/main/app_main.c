@@ -14,18 +14,20 @@
 #include "nvs_flash.h"
 #include "wifi.h"
 #include "leds.h"
+#include "i2c.h"
 #include "buttons.h"
 #include "epaper.h"
+#include "lis3dh.h"
 #include "board.h"
 #include "events.h"
 #include "golioth.h"
 
 #define TAG "magtag_demo"
 
-// TODO - lis3dh (i2c) accelerometer
 // TODO - DAC speaker/buzzer + GPIO enable
 // (https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/musical_buzzer)
 // TODO - ADC light sensor
+// TODO - Golioth integration
 
 static TimerHandle_t _timer250ms;
 EventGroupHandle_t _event_group;
@@ -56,14 +58,16 @@ void app_main(void) {
 
     nvs_flash_init();
     app_gpio_init();
+    i2c_master_init(I2C_SCL_PIN, I2C_SDA_PIN);
+    lis3dh_init(LIS3DH_I2C_ADDR);
 
     bool d13_on = true;
     gpio_set_level(D13_LED_GPIO_PIN, d13_on);
 
-    epaper_init();
-
     leds_init();
     leds_set_all_immediate(YELLOW);
+
+    epaper_init();
 
     wifi_init(CONFIG_GOLIOTH_EXAMPLE_WIFI_SSID, CONFIG_GOLIOTH_EXAMPLE_WIFI_PSK);
     wifi_wait_for_connected();
@@ -82,8 +86,23 @@ void app_main(void) {
             buttons_handle_event(events & EVENT_BUTTON_ANY);
         }
         if (events & EVENT_TIMER_250MS) {
+            static int iteration = 0;
+
             d13_on = !d13_on;
             gpio_set_level(D13_LED_GPIO_PIN, d13_on);
+
+            if ((iteration % 4) == 0) {  // 1 s
+                lis3dh_accel_data_t accel_data = {};
+                lis3dh_accel_read(&accel_data);
+                ESP_LOGI(
+                        TAG,
+                        "accel (x, y, z) = (%.03f, %.03f, %.03f)",
+                        accel_data.x_g,
+                        accel_data.y_g,
+                        accel_data.z_g);
+            }
+
+            iteration++;
         }
     };
 }
