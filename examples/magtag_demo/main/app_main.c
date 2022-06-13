@@ -15,13 +15,13 @@
 #include "wifi.h"
 #include "leds.h"
 #include "buttons.h"
+#include "epaper.h"
 #include "board.h"
 #include "events.h"
 #include "golioth.h"
 
 #define TAG "magtag_demo"
 
-// TODO - epaper display
 // TODO - lis3dh (i2c) accelerometer
 // TODO - DAC speaker/buzzer + GPIO enable
 // (https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/musical_buzzer)
@@ -39,6 +39,7 @@ static void on_client_event(golioth_client_t client, golioth_client_event_t even
     ESP_LOGI(TAG, "Golioth client %s", connected ? "connected" : "disconnected");
     uint32_t rgb = (connected ? GREEN : BLUE);
     leds_set_all_immediate(rgb);
+    epaper_autowrite((uint8_t*)"Connected to Golioth!");
 }
 
 static void app_gpio_init(void) {
@@ -58,6 +59,8 @@ void app_main(void) {
 
     bool d13_on = true;
     gpio_set_level(D13_LED_GPIO_PIN, d13_on);
+
+    epaper_init();
 
     leds_init();
     leds_set_all_immediate(YELLOW);

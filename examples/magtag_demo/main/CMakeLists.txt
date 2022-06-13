@@ -1,4 +1,7 @@
 idf_component_register(
+    INCLUDE_DIRS
+        "."
+        "epaper"
     SRCS
         "app_main.c"
         "wifi.c"
@@ -6,6 +9,9 @@ idf_component_register(
         "led_strip_rmt_ws2812.c"
         "buttons.c"
         "time.c"
+        "epaper/epaper.c"
+        "epaper/EPD_2in9d.c"
+        "epaper/ImageData.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "json"

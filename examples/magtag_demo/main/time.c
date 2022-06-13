@@ -1,4 +1,6 @@
 #include "time.h"
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 #include "esp_timer.h"
 
 uint64_t millis() {
@@ -8,4 +10,8 @@ uint64_t millis() {
     }
     uint64_t time_ms = (uint64_t)time_us / 1000;
     return time_ms;
+}
+
+void delay_ms(uint32_t ms) {
+    vTaskDelay(ms / portTICK_PERIOD_MS);
 }

@@ -1,15 +1,27 @@
 #pragma once
 
+// Small LED on back
 #define D13_LED_GPIO_PIN 13
 
+// Front-face buttons
 #define BUTTON_A_GPIO_PIN 15
 #define BUTTON_B_GPIO_PIN 14
 #define BUTTON_C_GPIO_PIN 12
 #define BUTTON_D_GPIO_PIN 11
 
-// Refer to Adafruit schematic:
+// LED strip
 //
+// Refer to Adafruit schematic:
 // https://cdn-learn.adafruit.com/assets/assets/000/096/946/original/adafruit_products_MagTag_sch.png?1605026160
 #define LED_STRIP_DATA_PIN 1
 #define LED_STRIP_POWER_PIN 21
 #define LED_STRIP_NUM_RGB_LEDS 4
+
+// Epaper
+#define EPAPER_BUSY 5
+#define EPAPER_RESET 6
+#define EPAPER_DATA_COMMAND 7
+#define EPAPER_CSEL 8
+#define EPAPER_MOSI 35
+#define EPAPER_SCLK 36
+#define EPAPER_MISO 37
