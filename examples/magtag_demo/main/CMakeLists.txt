@@ -3,6 +3,8 @@ idf_component_register(
         "app_main.c"
         "wifi.c"
         "ws2812_led_strip.c"
+        "buttons.c"
+        "time.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "json"

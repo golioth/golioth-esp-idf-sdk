@@ -6,16 +6,11 @@
 #include "driver/rmt.h"
 #include "led_strip.h"
 #include "ws2812_led_strip.h"
+#include "board.h"
 
 #define TAG "ws2812_led_strip"
 
 #define RMT_TX_CHANNEL RMT_CHANNEL_0
-
-// Refer to Adafruit schematic:
-//
-// https://cdn-learn.adafruit.com/assets/assets/000/096/946/original/adafruit_products_MagTag_sch.png?1605026160
-#define LED_STRIP_DATA_PIN 1
-#define LED_STRIP_POWER_PIN 21
 
 #define EXAMPLE_CHASE_SPEED_MS (250)
 

@@ -1,7 +1,5 @@
 #pragma once
 
-#define LED_STRIP_NUM_RGB_LEDS 4
-
 // In R/G/B order
 #define BLACK 0x000000
 #define RED 0xFF0000
