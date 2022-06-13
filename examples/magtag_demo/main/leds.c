@@ -4,11 +4,11 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "driver/rmt.h"
+#include "leds.h"
 #include "led_strip.h"
-#include "ws2812_led_strip.h"
 #include "board.h"
 
-#define TAG "ws2812_led_strip"
+#define TAG "leds"
 
 #define RMT_TX_CHANNEL RMT_CHANNEL_0
 
@@ -16,7 +16,7 @@
 
 static led_strip_t* _strip;
 
-void ws2812_led_strip_init(void) {
+void leds_init(void) {
     // Enable power
     gpio_reset_pin(LED_STRIP_POWER_PIN);
     gpio_set_direction(LED_STRIP_POWER_PIN, GPIO_MODE_OUTPUT);
@@ -36,17 +36,17 @@ void ws2812_led_strip_init(void) {
     if (!_strip) {
         ESP_LOGE(TAG, "install WS2812 driver failed");
     }
-    ws2812_led_strip_set_all_immediate(BLACK);
+    leds_set_all_immediate(BLACK);
 }
 
-void ws2812_led_strip_display(void) {
+void leds_display(void) {
     esp_err_t err = _strip->refresh(_strip, 100);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "refresh err: %d (%s)", err, esp_err_to_name(err));
     }
 }
 
-void ws2812_led_strip_set_led(int led_index, uint32_t rgb) {
+void leds_set_led(int led_index, uint32_t rgb) {
     uint32_t r = (rgb & 0xFF0000) >> 16;
     uint32_t g = (rgb & 0x00FF00) >> 8;
     uint32_t b = (rgb & 0x0000FF);
@@ -56,17 +56,17 @@ void ws2812_led_strip_set_led(int led_index, uint32_t rgb) {
     }
 }
 
-void ws2812_led_strip_set_led_immediate(int led_index, uint32_t rgb) {
-    ws2812_led_strip_set_led(led_index, rgb);
-    ws2812_led_strip_display();
+void leds_set_led_immediate(int led_index, uint32_t rgb) {
+    leds_set_led(led_index, rgb);
+    leds_display();
 }
 
-void ws2812_led_strip_set_all(uint32_t rgb) {
+void leds_set_all(uint32_t rgb) {
     for (int i = 0; i < LED_STRIP_NUM_RGB_LEDS; i++) {
-        ws2812_led_strip_set_led(i, rgb);
+        leds_set_led(i, rgb);
     }
 }
-void ws2812_led_strip_set_all_immediate(uint32_t rgb) {
-    ws2812_led_strip_set_all(rgb);
-    ws2812_led_strip_display();
+void leds_set_all_immediate(uint32_t rgb) {
+    leds_set_all(rgb);
+    leds_display();
 }

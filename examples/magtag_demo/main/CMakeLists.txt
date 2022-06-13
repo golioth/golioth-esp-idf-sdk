@@ -2,12 +2,12 @@ idf_component_register(
     SRCS
         "app_main.c"
         "wifi.c"
-        "ws2812_led_strip.c"
+        "leds.c"
+        "led_strip_rmt_ws2812.c"
         "buttons.c"
         "time.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "json"
         "nvs_flash"
-        "led_strip"
 )
