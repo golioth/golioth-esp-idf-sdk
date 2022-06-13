@@ -18,14 +18,14 @@
 #include "buttons.h"
 #include "epaper.h"
 #include "lis3dh.h"
+#include "speaker.h"
+#include "audio/coin.h"
 #include "board.h"
 #include "events.h"
 #include "golioth.h"
 
 #define TAG "magtag_demo"
 
-// TODO - DAC speaker/buzzer + GPIO enable
-// (https://github.com/espressif/esp-idf/tree/master/examples/peripherals/rmt/musical_buzzer)
 // TODO - ADC light sensor
 // TODO - Golioth integration
 
@@ -60,6 +60,7 @@ void app_main(void) {
     app_gpio_init();
     i2c_master_init(I2C_SCL_PIN, I2C_SDA_PIN);
     lis3dh_init(LIS3DH_I2C_ADDR);
+    speaker_init(SPEAKER_DAC1_PIN, SPEAKER_ENABLE_PIN);
 
     bool d13_on = true;
     gpio_set_level(D13_LED_GPIO_PIN, d13_on);
@@ -82,8 +83,18 @@ void app_main(void) {
     while (1) {
         EventBits_t events =
                 xEventGroupWaitBits(_event_group, EVENT_ANY, pdTRUE, pdFALSE, portMAX_DELAY);
-        if (events & EVENT_BUTTON_ANY) {
-            buttons_handle_event(events & EVENT_BUTTON_ANY);
+        if (events & EVENT_BUTTON_A_PRESSED) {
+            ESP_LOGI(TAG, "Button A pressed");
+        }
+        if (events & EVENT_BUTTON_B_PRESSED) {
+            ESP_LOGI(TAG, "Button B pressed");
+        }
+        if (events & EVENT_BUTTON_C_PRESSED) {
+            ESP_LOGI(TAG, "Button C pressed");
+        }
+        if (events & EVENT_BUTTON_D_PRESSED) {
+            ESP_LOGI(TAG, "Button D pressed");
+            speaker_play_audio(coin_audio, sizeof(coin_audio), COIN_SAMPLE_RATE);
         }
         if (events & EVENT_TIMER_250MS) {
             static int iteration = 0;

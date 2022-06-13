@@ -30,3 +30,7 @@
 #define I2C_SCL_PIN 34
 #define I2C_SDA_PIN 33
 #define LIS3DH_I2C_ADDR 0x19
+
+// Speaker
+#define SPEAKER_DAC1_PIN 17
+#define SPEAKER_ENABLE_PIN 16

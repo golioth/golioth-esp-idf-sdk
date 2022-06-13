@@ -18,7 +18,7 @@ static void IRAM_ATTR button_isr(void* arg) {
         // Too soon, don't handle this edge
         return;
     }
-    _debounce_ms[gpio_num] = millis() + 50;
+    _debounce_ms[gpio_num] = millis() + 100;
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xEventGroupSetBitsFromISR(_event_group, (1 << gpio_num), &xHigherPriorityTaskWoken);
@@ -38,19 +38,4 @@ void buttons_gpio_init(void) {
     gpio_isr_handler_add(BUTTON_B_GPIO_PIN, button_isr, (void*)1);
     gpio_isr_handler_add(BUTTON_C_GPIO_PIN, button_isr, (void*)2);
     gpio_isr_handler_add(BUTTON_D_GPIO_PIN, button_isr, (void*)3);
-}
-
-void buttons_handle_event(uint32_t button_events) {
-    if (button_events & EVENT_BUTTON_A_PRESSED) {
-        ESP_LOGI(TAG, "Button A pressed");
-    }
-    if (button_events & EVENT_BUTTON_B_PRESSED) {
-        ESP_LOGI(TAG, "Button B pressed");
-    }
-    if (button_events & EVENT_BUTTON_C_PRESSED) {
-        ESP_LOGI(TAG, "Button C pressed");
-    }
-    if (button_events & EVENT_BUTTON_D_PRESSED) {
-        ESP_LOGI(TAG, "Button D pressed");
-    }
 }

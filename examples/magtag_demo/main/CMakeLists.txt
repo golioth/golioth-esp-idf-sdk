@@ -11,6 +11,7 @@ idf_component_register(
         "time.c"
         "i2c.c"
         "lis3dh.c"
+        "speaker.c"
         "epaper/epaper.c"
         "epaper/EPD_2in9d.c"
         "epaper/ImageData.c"
