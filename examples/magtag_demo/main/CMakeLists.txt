@@ -12,6 +12,7 @@ idf_component_register(
         "i2c.c"
         "lis3dh.c"
         "speaker.c"
+        "light_sensor.c"
         "epaper/epaper.c"
         "epaper/EPD_2in9d.c"
         "epaper/ImageData.c"
@@ -19,4 +20,5 @@ idf_component_register(
         "golioth_sdk"
         "json"
         "nvs_flash"
+        "esp_adc_cal"
 )

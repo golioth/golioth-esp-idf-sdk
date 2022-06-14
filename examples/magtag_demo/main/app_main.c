@@ -16,6 +16,7 @@
 #include "leds.h"
 #include "i2c.h"
 #include "buttons.h"
+#include "light_sensor.h"
 #include "epaper.h"
 #include "lis3dh.h"
 #include "speaker.h"
@@ -26,7 +27,6 @@
 
 #define TAG "magtag_demo"
 
-// TODO - ADC light sensor
 // TODO - Golioth integration
 
 static TimerHandle_t _timer250ms;
@@ -61,6 +61,7 @@ void app_main(void) {
     i2c_master_init(I2C_SCL_PIN, I2C_SDA_PIN);
     lis3dh_init(LIS3DH_I2C_ADDR);
     speaker_init(SPEAKER_DAC1_PIN, SPEAKER_ENABLE_PIN);
+    light_sensor_init();
 
     bool d13_on = true;
     gpio_set_level(D13_LED_GPIO_PIN, d13_on);
@@ -111,6 +112,7 @@ void app_main(void) {
                         accel_data.x_g,
                         accel_data.y_g,
                         accel_data.z_g);
+                ESP_LOGI(TAG, "light sensor = %d mV", light_sensor_read_mV());
             }
 
             iteration++;
