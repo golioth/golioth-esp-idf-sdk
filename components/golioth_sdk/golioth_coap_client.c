@@ -96,7 +96,6 @@ static coap_response_t coap_response_handler(
     coap_context_t* coap_context = coap_session_get_context(session);
     golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
 
-
     const uint8_t* data = NULL;
     size_t data_len = 0;
     coap_get_data(received, &data_len, &data);
@@ -663,7 +662,7 @@ static void golioth_coap_client_task(void* arg) {
         // This is done so we can determine quickly whether we are connected
         // to the cloud or not (libcoap does not tell us when it's connected
         // for some reason, so this is a workaround for that).
-        golioth_coap_empty(coap_session);
+        golioth_coap_client_empty(client, false);
 
         // If we are re-connecting and had prior observations, set
         // them up again now (tokens will be updated).

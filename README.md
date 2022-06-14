@@ -12,9 +12,9 @@ and run in the latest release of esp-idf
 Install the latest release of esp-idf using the
 [installation directions from Espressif](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html#installation)
 
-## Trying the example
+## Trying the examples
 
-The `example` directory contains an example app which you can build and run.
+The `examples` directory contains example apps which you can build and run.
 
 First, setup the environment. If you've installed esp-idf using Windows
 or an IDE plugin, you can usually skip this step, as the environment
@@ -35,7 +35,7 @@ idf.py set-target esp32s3
 Next, `cd` to the example directory:
 
 ```
-cd example/X
+cd examples/X
 ```
 
 Configure (optional):
