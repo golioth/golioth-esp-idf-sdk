@@ -74,12 +74,12 @@ static void on_desired_buzz(
         return;
     }
 
-    int32_t buzz_value = golioth_payload_as_int(payload, payload_size);
-    ESP_LOGI(TAG, "Got desired/buzz = %d", buzz_value);
+    bool buzz = golioth_payload_as_bool(payload, payload_size);
+    ESP_LOGI(TAG, "Got desired/buzz");
 
-    if (buzz_value == 1) {
+    if (buzz) {
         speaker_play_audio(coin_audio, sizeof(coin_audio), COIN_SAMPLE_RATE);
-        golioth_lightdb_set_int_async(client, path, 0);
+        golioth_lightdb_delete_async(client, path);
     }
 }
 
@@ -106,6 +106,7 @@ static void on_desired_text(
     ESP_LOGI(TAG, "Got desired/text = %s", text);
     write_text(text, strlen(text));
     cJSON_Delete(json);
+    golioth_lightdb_delete_async(client, path);
 }
 
 static void set_led_from_json(uint32_t led_index, const cJSON* json) {
@@ -152,6 +153,7 @@ static void on_desired_leds(
     set_led_from_json(3, cJSON_GetObjectItemCaseSensitive(json, "3"));
 
     cJSON_Delete(json);
+    golioth_lightdb_delete_async(client, path);
 }
 
 static const char* led_color_to_str(uint32_t color) {
