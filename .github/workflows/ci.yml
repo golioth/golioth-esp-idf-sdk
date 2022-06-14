@@ -30,4 +30,4 @@ jobs:
       with:
         esp_idf_version: v4.4.1
         target: esp32
-        path: 'example'
+        path: 'examples/golioth_basics'
