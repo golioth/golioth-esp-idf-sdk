@@ -17,10 +17,13 @@
 ///< convert from milli-gs to gs
 #define LIS3DH_LSB16_TO_KILO_LSB10 64000
 
+#define LIS3DH_GRAVITY_EARTH (9.80665F)
+
 typedef struct {
-    float x_g;
-    float y_g;
-    float z_g;
+    // m/s^2
+    float x_mps2;
+    float y_mps2;
+    float z_mps2;
 } lis3dh_accel_data_t;
 
 void lis3dh_init(uint8_t i2c_addr);

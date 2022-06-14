@@ -47,9 +47,9 @@ esp_err_t lis3dh_accel_read(lis3dh_accel_data_t* data) {
 
     // Note: Assuming 2g range and 12-bit mode (hi-res) configured in CTRL4
     float g_per_digit = .001;
-    data->x_g = g_per_digit * (x_raw >> 4);
-    data->y_g = g_per_digit * (y_raw >> 4);
-    data->z_g = g_per_digit * (z_raw >> 4);
+    data->x_mps2 = g_per_digit * (x_raw >> 4) * LIS3DH_GRAVITY_EARTH;
+    data->y_mps2 = g_per_digit * (y_raw >> 4) * LIS3DH_GRAVITY_EARTH;
+    data->z_mps2 = g_per_digit * (z_raw >> 4) * LIS3DH_GRAVITY_EARTH;
 
     return ESP_OK;
 }

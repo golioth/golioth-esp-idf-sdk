@@ -118,9 +118,8 @@ void epaper_init(void) {
     EPD_2IN9D_Sleep();           /* always sleep the ePaper display to avoid damaging it */
 }
 
-void epaper_autowrite(uint8_t* str) {
+void epaper_autowrite_len(uint8_t* str, size_t len) {
     static uint8_t line = 0;
-    size_t len = strlen((char*)str);
     if (line > 7) {
         EPD_2IN9D_Init();
         EPD_2IN9D_Clear();
@@ -130,4 +129,8 @@ void epaper_autowrite(uint8_t* str) {
         epaper_WriteDoubleLine(str, len, line);
         ++line;
     }
+}
+
+void epaper_autowrite(uint8_t* str) {
+    epaper_autowrite_len(str, strlen((const char*)str));
 }

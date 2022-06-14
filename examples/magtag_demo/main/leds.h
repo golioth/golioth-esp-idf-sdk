@@ -7,6 +7,8 @@
 #define BLUE 0x0000FF
 #define YELLOW 0xFFFF00
 
+#define NUM_LEDS 4
+
 void leds_init(void);
 void leds_set_led(int led_index, uint32_t rgb);
 void leds_set_led_immediate(int led_index, uint32_t rgb);

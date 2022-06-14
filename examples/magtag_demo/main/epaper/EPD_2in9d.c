@@ -247,7 +247,7 @@ void EPD_2IN9D_Init(void) {
 
     EPD_2IN9D_SendCommand(0X50);  // VCOM AND DATA INTERVAL SETTING
     EPD_2IN9D_SendData(0x97);     // WBmode:VBDF 17|D7 VBDW 97 VBDB 57		WBRmode:VBDF F7 VBDW 77 VBDB
-                               // 37  VBDR B7
+                                  // 37  VBDR B7
 }
 
 /******************************************************************************
