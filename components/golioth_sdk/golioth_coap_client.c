@@ -575,9 +575,7 @@ coap_io_loop_once(golioth_coap_client_t* client, coap_context_t* context, coap_s
     while (time_spent_waiting_ms < timeout_ms) {
         int32_t remaining_ms = timeout_ms - time_spent_waiting_ms;
         int32_t wait_ms = min(1000, remaining_ms);
-        ESP_LOGD(TAG, "Response wait io process start");
         int32_t num_ms = coap_io_process(context, wait_ms);
-        ESP_LOGD(TAG, "Response wait io process end");
         if (num_ms < 0) {
             io_error = true;
             break;

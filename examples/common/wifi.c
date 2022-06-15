@@ -81,7 +81,7 @@ void wifi_init(const char* ssid, const char* password) {
     ESP_ERROR_CHECK(esp_wifi_start());
 }
 
-void wifi_wait_for_connected(void) {
+static bool wifi_wait_for_connected_internal(TickType_t timeout_ticks) {
     assert(_ssid);
     assert(_password);
     EventBits_t bits = xEventGroupWaitBits(
@@ -89,12 +89,23 @@ void wifi_wait_for_connected(void) {
             WIFI_CONNECTED_BIT | WIFI_FAIL_BIT,
             pdFALSE,
             pdFALSE,
-            portMAX_DELAY);
+            timeout_ticks);
+    bool connected = false;
     if (bits & WIFI_CONNECTED_BIT) {
         ESP_LOGI(TAG, "Connected to AP SSID: %s", _ssid);
+        connected = true;
     } else if (bits & WIFI_FAIL_BIT) {
         ESP_LOGI(TAG, "Failed to connect to SSID: %s", _ssid);
     } else {
         ESP_LOGE(TAG, "UNEXPECTED EVENT");
     }
+    return connected;
+}
+
+bool wifi_wait_for_connected_with_timeout(uint32_t timeout_s) {
+    return wifi_wait_for_connected_internal((timeout_s * 1000) / portTICK_PERIOD_MS);
+}
+
+void wifi_wait_for_connected(void) {
+    wifi_wait_for_connected_internal(portMAX_DELAY);
 }
