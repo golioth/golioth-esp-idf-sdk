@@ -2,9 +2,9 @@ idf_component_register(
     INCLUDE_DIRS
         "."
         "epaper"
+        "../../common"
     SRCS
         "app_main.c"
-        "wifi.c"
         "leds.c"
         "led_strip_rmt_ws2812.c"
         "buttons.c"
@@ -16,6 +16,7 @@ idf_component_register(
         "epaper/epaper.c"
         "epaper/EPD_2in9d.c"
         "epaper/ImageData.c"
+        "../../common/wifi.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "json"

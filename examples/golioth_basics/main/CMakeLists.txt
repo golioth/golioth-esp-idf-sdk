@@ -1,10 +1,12 @@
 idf_component_register(
+    INCLUDE_DIRS
+        "../../common"
     SRCS
         "app_main.c"
-        "shell.c"
-        "wifi.c"
-        "fw_update.c"
-        "nvs.c"
+        "../../common/shell.c"
+        "../../common/wifi.c"
+        "../../common/fw_update.c"
+        "../../common/nvs.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "console"
