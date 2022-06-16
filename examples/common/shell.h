@@ -5,5 +5,13 @@
  */
 #pragma once
 
-// Create task that will run the shell command-line interface
-void shell_init(void);
+#include "esp_console.h"
+
+// Create task that will run the shell command-line interface.
+//
+// If you have custom commands to register, make sure to call shell_register_command
+// before calling this function.
+void shell_start(void);
+
+// Register a custom shell command
+void shell_register_command(const esp_console_cmd_t* cmd);

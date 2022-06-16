@@ -95,9 +95,9 @@ static bool wifi_wait_for_connected_internal(TickType_t timeout_ticks) {
         ESP_LOGI(TAG, "Connected to AP SSID: %s", _ssid);
         connected = true;
     } else if (bits & WIFI_FAIL_BIT) {
-        ESP_LOGI(TAG, "Failed to connect to SSID: %s", _ssid);
+        ESP_LOGE(TAG, "Failed to connect to SSID: %s", _ssid);
     } else {
-        ESP_LOGE(TAG, "UNEXPECTED EVENT");
+        ESP_LOGE(TAG, "Timeout waiting for wifi to connect");
     }
     return connected;
 }

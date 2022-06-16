@@ -55,7 +55,12 @@ jobs:
           tar xvf build.tar.gz
     - name: Install esptool
       run: pip install esptool
+    # Assume the self-hosted runner has a $HOME/credentials.json file
+    # that sets the local WiFi ssid/password and Golioth psk-id/psk.
+    - name: Copy credentials.json to examples/test
+      run: |
+          cp $HOME/credentials.json examples/test
     - name: Flash and Verify Serial Output
       run: |
         cd examples/test
-        python flash_and_verify_serial_output.py $CI_ESP32_PORT
+        python flash.py $CI_ESP32_PORT && python verify.py $CI_ESP32_PORT

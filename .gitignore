@@ -1,5 +1,5 @@
 build/
 sdkconfig
 sdkconfig.old
-sdkconfig.credentials
 build.tar.gz
+credentials.json

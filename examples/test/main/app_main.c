@@ -13,6 +13,8 @@
 #include "nvs.h"
 #include "wifi.h"
 #include "time.h"
+#include "shell.h"
+#include "util.h"
 #include "golioth.h"
 
 #define TAG "test"
@@ -29,8 +31,8 @@ static void on_client_event(golioth_client_t client, golioth_client_event_t even
 }
 
 static void test_connects_to_wifi(void) {
-    wifi_init(CONFIG_GOLIOTH_EXAMPLE_WIFI_SSID, CONFIG_GOLIOTH_EXAMPLE_WIFI_PSK);
-    bool connected = wifi_wait_for_connected_with_timeout(5);
+    wifi_init(nvs_read_wifi_ssid(), nvs_read_wifi_password());
+    bool connected = wifi_wait_for_connected_with_timeout(10);
     TEST_ASSERT_TRUE(connected);
 }
 
@@ -46,21 +48,32 @@ static void try_connect(const char* psk_id, const char* psk, bool should_connect
 }
 
 static void test_connects_to_golioth(void) {
-    try_connect(CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID, CONFIG_GOLIOTH_EXAMPLE_COAP_PSK, true);
+    try_connect(nvs_read_golioth_psk_id(), nvs_read_golioth_psk(), true);
 }
 
 static void test_does_not_connect_to_golioth_with_invalid_psk(void) {
-    try_connect(CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID, "invalid_psk", false);
+    try_connect(nvs_read_golioth_psk_id(), "invalid_psk", false);
 }
 
-void app_main(void) {
-    nvs_init();
-
+static int built_in_test(int argc, char** argv) {
     UNITY_BEGIN();
     RUN_TEST(test_connects_to_wifi);
     RUN_TEST(test_connects_to_golioth);
     RUN_TEST(test_does_not_connect_to_golioth_with_invalid_psk);
     UNITY_END();
+    return 0;
+}
+
+void app_main(void) {
+    nvs_init();
+
+    esp_console_cmd_t built_in_test_cmd = {
+            .command = "built_in_test",
+            .help = "Run the built-in Unity tests",
+            .func = built_in_test,
+    };
+    shell_register_command(&built_in_test_cmd);
+    shell_start();
 
     while (1) {
         delay_ms(100000);
