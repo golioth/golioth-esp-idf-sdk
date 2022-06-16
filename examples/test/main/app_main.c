@@ -56,13 +56,11 @@ static void test_does_not_connect_to_golioth_with_invalid_psk(void) {
 void app_main(void) {
     nvs_init();
 
-    printf("test BEGIN\n");
     UNITY_BEGIN();
     RUN_TEST(test_connects_to_wifi);
     RUN_TEST(test_connects_to_golioth);
     RUN_TEST(test_does_not_connect_to_golioth_with_invalid_psk);
     UNITY_END();
-    printf("test END\n");
 
     while (1) {
         delay_ms(100000);
