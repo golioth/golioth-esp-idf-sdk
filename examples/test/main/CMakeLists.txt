@@ -3,10 +3,10 @@ idf_component_register(
         "../../common"
     SRCS
         "app_main.c"
-        "../../common/shell.c"
         "../../common/wifi.c"
-        "../../common/fw_update.c"
         "../../common/nvs.c"
+        "../../common/time.c"
+        "../../common/shell.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "console"
@@ -14,4 +14,5 @@ idf_component_register(
         "nvs_flash"
         "json"
         "app_update"
+        "unity"
 )

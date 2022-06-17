@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  build:
+  build_golioth_basics_example:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout repository and submodules

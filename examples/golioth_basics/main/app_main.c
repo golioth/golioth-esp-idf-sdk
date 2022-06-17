@@ -87,7 +87,7 @@ static void on_client_event(golioth_client_t client, golioth_client_event_t even
 
 void app_main(void) {
     nvs_init();
-    shell_init();
+    shell_start();
 
     if (!nvs_credentials_are_set()) {
         while (1) {

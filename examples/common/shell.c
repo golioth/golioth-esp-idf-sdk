@@ -15,15 +15,17 @@
 #include "nvs.h"
 #include "nvs_flash.h"
 #include "shell.h"
+#include "util.h"
 #include "wifi.h"
 
 #define TAG "shell"
-#define PROMPT_STR CONFIG_IDF_TARGET
-#define COUNT_OF(x) ((sizeof(x) / sizeof(0 [x])) / ((size_t)(!(sizeof(x) % sizeof(0 [x])))))
+#define PROMPT_STR "esp32"
+
+#define MAX_NUM_CUSTOM_COMMANDS 16
 
 static int heap(int argc, char** argv);
 static int version(int argc, char** argv);
-static int restart(int argc, char** argv);
+static int reset(int argc, char** argv);
 static int tasks(int argc, char** argv);
 static int settings(int argc, char** argv);
 
@@ -41,10 +43,10 @@ static const esp_console_cmd_t _cmds[] = {
                 .func = version,
         },
         {
-                .command = "restart",
+                .command = "reset",
                 .help = "Software reset of the chip",
                 .hint = NULL,
-                .func = restart,
+                .func = reset,
         },
         {
                 .command = "tasks",
@@ -59,6 +61,10 @@ static const esp_console_cmd_t _cmds[] = {
                 .func = settings,
         },
 };
+
+// Commands added with shell_register_commands
+static esp_console_cmd_t _custom_cmds[MAX_NUM_CUSTOM_COMMANDS];
+static size_t _num_custom_cmds;
 
 static int heap(int argc, char** argv) {
     printf("Free: %d, Free low watermark: %d\n",
@@ -85,8 +91,8 @@ static int version(int argc, char** argv) {
     return 0;
 }
 
-static int restart(int argc, char** argv) {
-    ESP_LOGI(TAG, "Restarting");
+static int reset(int argc, char** argv) {
+    ESP_LOGI(TAG, "Resetting");
     esp_restart();
 }
 
@@ -233,6 +239,10 @@ static void shell_task(void* arg) {
         ESP_ERROR_CHECK(esp_console_cmd_register(&_cmds[i]));
     }
 
+    for (int i = 0; i < _num_custom_cmds; i++) {
+        ESP_ERROR_CHECK(esp_console_cmd_register(&_custom_cmds[i]));
+    }
+
     const char* prompt = LOG_COLOR_I PROMPT_STR "> " LOG_RESET_COLOR;
     printf("\n"
            "Type 'help' to get the list of commands.\n"
@@ -276,7 +286,7 @@ static void shell_task(void* arg) {
     }
 }
 
-void shell_init(void) {
+void shell_start(void) {
     static bool initialized = false;
     if (!initialized) {
         bool task_created = xTaskCreate(
@@ -292,4 +302,12 @@ void shell_init(void) {
             initialized = true;
         }
     }
+}
+
+void shell_register_command(const esp_console_cmd_t* cmd) {
+    if (_num_custom_cmds >= MAX_NUM_CUSTOM_COMMANDS) {
+        ESP_LOGE(TAG, "Can't register more than %d custom commands", MAX_NUM_CUSTOM_COMMANDS);
+        return;
+    }
+    _custom_cmds[_num_custom_cmds++] = *cmd;
 }

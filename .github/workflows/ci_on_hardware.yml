@@ -1,0 +1,66 @@
+name: Test on Hardware
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+
+jobs:
+  build_test_example:
+    runs-on: ubuntu-latest
+    # The 'if' will prevent running this job if from a fork pull request
+    if: ${{ github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name }}
+    steps:
+    - name: Checkout repository and submodules
+      uses: actions/checkout@v2
+      with:
+        submodules: 'recursive'
+    - name: Setup Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.x
+        architecture: 'x64'
+    - name: Build test project
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v4.4.1
+        target: esp32s3
+        path: 'examples/test'
+    - name: Create build tarball
+      run: |
+          cd examples/test
+          ./tar_build.sh
+    - name: Upload build tarball artifact
+      uses: actions/upload-artifact@v3
+      with:
+          name: build.tar.gz
+          path: examples/test/build.tar.gz
+
+  flash_and_test:
+    needs: build_test_example
+    runs-on: [self-hosted, has_esp32s3]
+    # The 'if' will prevent running this job if from a fork pull request
+    if: ${{ github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name }}
+    steps:
+    - name: Checkout repository without submodules
+      uses: actions/checkout@v2
+    - name: Download build tarball artifact
+      uses: actions/download-artifact@v3
+      with:
+          name: build.tar.gz
+          path: examples/test
+    - name: Untar build tarball
+      run: |
+          cd examples/test
+          tar xvf build.tar.gz
+    - name: Install esptool
+      run: pip install esptool
+    # Assume the self-hosted runner has a $HOME/credentials.json file
+    # that sets the local WiFi ssid/password and Golioth psk-id/psk.
+    - name: Copy credentials.json to examples/test
+      run: |
+          cp $HOME/credentials.json examples/test
+    - name: Flash and Verify Serial Output
+      run: |
+        cd examples/test
+        python flash.py $CI_ESP32_PORT && python verify.py $CI_ESP32_PORT
