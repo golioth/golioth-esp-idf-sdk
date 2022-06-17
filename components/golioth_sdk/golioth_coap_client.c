@@ -32,6 +32,7 @@ typedef struct {
     TaskHandle_t coap_task_handle;
     SemaphoreHandle_t run_sem;
     TimerHandle_t keepalive_timer;
+    bool is_running;
     int keepalive_count;
     bool end_session;
     bool session_connected;
@@ -157,6 +158,14 @@ static int event_handler(coap_session_t* session, const coap_event_t event) {
         case COAP_EVENT_DTLS_CLOSED:
         case COAP_EVENT_TCP_CLOSED:
         case COAP_EVENT_SESSION_CLOSED:
+            ESP_LOGW(TAG, "Session closed.");
+            if (client->event_callback && client->session_connected) {
+                client->event_callback(
+                        client, GOLIOTH_CLIENT_EVENT_DISCONNECTED, client->event_callback_arg);
+            }
+            client->session_connected = false;
+            client->end_session = true;
+            break;
         case COAP_EVENT_DTLS_ERROR:
         case COAP_EVENT_TCP_FAILED:
         case COAP_EVENT_SESSION_FAILED:
@@ -619,9 +628,19 @@ coap_io_loop_once(golioth_coap_client_t* client, coap_context_t* context, coap_s
 
 static void on_keepalive(TimerHandle_t timer) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)pvTimerGetTimerID(timer);
-    ESP_LOGD(TAG, "keepalive");
-    c->keepalive_count++;
-    golioth_coap_client_empty(c, false);
+    if (c->is_running) {
+        ESP_LOGD(TAG, "keepalive");
+        c->keepalive_count++;
+        golioth_coap_client_empty(c, false);
+    }
+}
+
+golioth_status_t golioth_client_is_running(golioth_client_t client) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return GOLIOTH_ERR_NULL;
+    }
+    return c->is_running;
 }
 
 // Note: libcoap is not thread safe, so all rx/tx I/O for the session must be
@@ -636,10 +655,12 @@ static void golioth_coap_client_task(void* arg) {
         client->end_session = false;
         client->session_connected = false;
 
+        client->is_running = false;
         ESP_LOGD(TAG, "Waiting for the \"run\" signal");
         xSemaphoreTake(client->run_sem, portMAX_DELAY);
         xSemaphoreGive(client->run_sem);
         ESP_LOGD(TAG, "Received \"run\" signal");
+        client->is_running = true;
 
         if (create_context(client, &coap_context) != GOLIOTH_OK) {
             goto cleanup;
@@ -691,9 +712,6 @@ static void golioth_coap_client_task(void* arg) {
             coap_free_context(coap_context);
         }
         coap_cleanup();
-
-        ESP_LOGI(TAG, "Delay before re-starting session");
-        vTaskDelay(5000 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
