@@ -38,7 +38,7 @@ jobs:
 
   flash_and_test:
     needs: build_test_example
-    runs-on: self-hosted
+    runs-on: [self-hosted, has_esp32s3]
     # The 'if' will prevent running this job if from a fork pull request
     if: ${{ github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name }}
     steps:
