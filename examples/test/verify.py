@@ -40,6 +40,16 @@ def reset(ser):
     wait_for_str_in_line(ser, 'heap_init')
     wait_for_str_in_line(ser, 'esp32>')
 
+def green_print(s):
+    green = '\033[92m'
+    resetcolor = '\033[0m'
+    print(green + s + resetcolor)
+
+def red_print(s):
+    red = '\033[31m'
+    resetcolor = '\033[0m'
+    print(red + s + resetcolor)
+
 def run_built_in_tests(ser):
     unity_test_end_re = '\.c:\d+:test_.*:(PASS|FAIL)'
     unity_done_re = '^\d+ Tests (\d+) Failures \d+ Ignored'
@@ -67,6 +77,20 @@ def run_built_in_tests(ser):
             print('================ END OF DEVICE OUTPUT ================')
             for tr in test_results:
                 print(tr)
+
+            if num_test_failures == 0:
+                green_print('------------------------')
+                print('')
+                green_print('  ✓ All Tests Passed 🎉')
+                print('')
+                green_print('------------------------')
+            else:
+                red_print('------------------------')
+                print('')
+                red_print('  ✗ Failed {} Tests'.format(num_test_failures))
+                print('')
+                red_print('------------------------')
+
             return num_test_failures
 
         if re.search(unity_test_end_re, line):
