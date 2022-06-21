@@ -8,7 +8,6 @@ idf_component_register(
         "leds.c"
         "led_strip_rmt_ws2812.c"
         "buttons.c"
-        "time.c"
         "i2c.c"
         "lis3dh.c"
         "speaker.c"
