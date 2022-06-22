@@ -712,6 +712,9 @@ static void golioth_coap_client_task(void* arg) {
             coap_free_context(coap_context);
         }
         coap_cleanup();
+
+        // Small delay before start a new session
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
