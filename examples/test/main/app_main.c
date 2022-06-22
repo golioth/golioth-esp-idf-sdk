@@ -53,9 +53,6 @@ static void test_golioth_client_create(void) {
         _client = golioth_client_create(nvs_read_golioth_psk_id(), nvs_read_golioth_psk());
         TEST_ASSERT_NOT_NULL(_client);
         golioth_client_register_event_callback(_client, on_client_event, NULL);
-
-        // Start the fw_update task
-        fw_update_init(_client, _current_version);
     }
 }
 
@@ -113,6 +110,12 @@ static int built_in_test(int argc, char** argv) {
     return 0;
 }
 
+static int start_ota(int argc, char** argv) {
+    assert(_client);
+    fw_update_init(_client, _current_version);
+    return 0;
+}
+
 void app_main(void) {
     nvs_init();
 
@@ -122,6 +125,13 @@ void app_main(void) {
             .func = built_in_test,
     };
     shell_register_command(&built_in_test_cmd);
+
+    esp_console_cmd_t start_ota_cmd = {
+            .command = "start_ota",
+            .help = "Start the firmware update OTA task",
+            .func = start_ota,
+    };
+    shell_register_command(&start_ota_cmd);
     shell_start();
 
     while (1) {
