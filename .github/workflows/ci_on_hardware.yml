@@ -20,6 +20,13 @@ jobs:
       with:
         python-version: 3.x
         architecture: 'x64'
+    - name: Install goliothctl and coap-cli
+      run: |
+        echo "deb [trusted=yes] https://repos.golioth.io/apt/ /" | sudo tee /etc/apt/sources.list.d/golioth.list
+        sudo apt update
+        sudo apt install goliothctl coap
+        goliothctl version
+        coap version
     - name: Build test project
       uses: espressif/esp-idf-ci-action@v1
       with:
@@ -28,32 +35,38 @@ jobs:
         path: 'examples/test'
     - name: Create build tarball for serial flashing
       run: |
-          cd examples/test
-          tar czf build.tar.gz \
-              build/flasher_args.json \
-              build/bootloader/bootloader.bin \
-              build/test.bin \
-              build/partition_table/partition-table.bin \
-              build/ota_data_initial.bin
+        cd examples/test
+        tar czf build.tar.gz \
+            build/flasher_args.json \
+            build/bootloader/bootloader.bin \
+            build/test.bin \
+            build/partition_table/partition-table.bin \
+            build/ota_data_initial.bin
+    - name: Upload tarball
+      uses: actions/upload-artifact@v3
+      with:
+        name: build.tar.gz
+        path: examples/test/build.tar.gz
     - name: Replace version 1.2.3 with 1.2.99
       run: |
-          sed -i 's/1.2.3/1.2.99/g' examples/test/main/app_main.c
+        sed -i 's/1.2.3/1.2.99/g' examples/test/main/app_main.c
     - name: Rebuild test project with version 1.2.99
       uses: espressif/esp-idf-ci-action@v1
       with:
         esp_idf_version: v4.4.1
         target: esp32s3
         path: 'examples/test'
-    - name: Create build tarball for ota update
+    - name: Create and rollout new OTA release using goliothctl
+      env:
+        GOLIOTH_API_KEY: ${{ secrets.GOLIOTH_API_KEY }}
       run: |
-          cd examples/test
-          cp build/test.bin test_ota.bin
-          tar czf ota.tar.gz test_ota.bin
-    - name: Upload tarballs
-      uses: actions/upload-artifact@v3
-      with:
-          name: build_tarballs
-          path: examples/test/*.tar.gz
+        cd examples/test
+        goliothctl login --apiKey $GOLIOTH_API_KEY
+        goliothctl config set projectId ci
+        goliothctl dfu release delete 1.2.99 || echo "release not found"
+        goliothctl dfu artifact delete 1.2.99 || echo "artifact not found"
+        goliothctl dfu artifact create build/test.bin --version 1.2.99
+        goliothctl dfu release create --release-tags 1.2.99 --components main@1.2.99 --rollout true
 
   flash_and_test:
     needs: build_test_example
@@ -63,23 +76,22 @@ jobs:
     steps:
     - name: Checkout repository without submodules
       uses: actions/checkout@v2
-    - name: Download build tarballs
+    - name: Download build tarball
       uses: actions/download-artifact@v3
       with:
-          name: build_tarballs
-          path: examples/test
+        name: build.tar.gz
+        path: examples/test
     - name: Untar
       run: |
-          cd examples/test
-          tar xvf build.tar.gz
-          tar xvf ota.tar.gz
+        cd examples/test
+        tar xvf build.tar.gz
     - name: Install esptool
       run: pip install esptool
     # Assume the self-hosted runner has a $HOME/credentials.json file
     # that sets the local WiFi ssid/password and Golioth psk-id/psk.
     - name: Copy credentials.json to examples/test
       run: |
-          cp $HOME/credentials.json examples/test
+        cp $HOME/credentials.json examples/test
     - name: Flash and Verify Serial Output
       run: |
         cd examples/test
