@@ -7,6 +7,21 @@ This repo contains a runtime library and set of examples intended to build
 and run in the latest release of esp-idf
 (currently [4.4.1](https://github.com/espressif/esp-idf/releases/tag/v4.4.1)).
 
+## Cloning this repo
+
+This repo uses git submodules, so you will need to clone with the `--recursive` option:
+
+```sh
+git clone --recursive https://github.com/golioth/golioth-esp-idf-sdk.git
+```
+
+Or, if you've already cloned, you can update and initialize submodules with this command:
+
+```sh
+cd golioth-esp-idf-sdk
+git submodule update --init --recursive
+```
+
 ## Install esp-idf
 
 Install the latest release of esp-idf using the
@@ -15,6 +30,13 @@ Install the latest release of esp-idf using the
 ## Trying the examples
 
 The `examples` directory contains example apps which you can build and run.
+
+### Using VSCode esp-idf extension
+
+If you are using the VScode esp-idf extension, you should be able to load these examples
+directly into your workspace and build/flash/monitor.
+
+### Command-line
 
 First, setup the environment. If you've installed esp-idf using Windows
 or an IDE plugin, you can usually skip this step, as the environment
