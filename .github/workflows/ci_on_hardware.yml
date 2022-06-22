@@ -26,15 +26,34 @@ jobs:
         esp_idf_version: v4.4.1
         target: esp32s3
         path: 'examples/test'
-    - name: Create build tarball
+    - name: Create build tarball for serial flashing
       run: |
           cd examples/test
-          ./tar_build.sh
-    - name: Upload build tarball artifact
+          tar czf build.tar.gz \
+              build/flasher_args.json \
+              build/bootloader/bootloader.bin \
+              build/test.bin \
+              build/partition_table/partition-table.bin \
+              build/ota_data_initial.bin
+    - name: Replace version 1.2.3 with 1.2.99
+      run: |
+          sed -i 's/1.2.3/1.2.99/g' examples/test/main/app_main.c
+    - name: Rebuild test project with version 1.2.99
+      uses: espressif/esp-idf-ci-action@v1
+      with:
+        esp_idf_version: v4.4.1
+        target: esp32s3
+        path: 'examples/test'
+    - name: Create build tarball for ota update
+      run: |
+          cd examples/test
+          cp build/test.bin test_ota.bin
+          tar czf ota.tar.gz test_ota.bin
+    - name: Upload tarballs
       uses: actions/upload-artifact@v3
       with:
-          name: build.tar.gz
-          path: examples/test/build.tar.gz
+          name: build_tarballs
+          path: examples/test/*.tar.gz
 
   flash_and_test:
     needs: build_test_example
@@ -44,15 +63,16 @@ jobs:
     steps:
     - name: Checkout repository without submodules
       uses: actions/checkout@v2
-    - name: Download build tarball artifact
+    - name: Download build tarballs
       uses: actions/download-artifact@v3
       with:
-          name: build.tar.gz
+          name: build_tarballs
           path: examples/test
-    - name: Untar build tarball
+    - name: Untar
       run: |
           cd examples/test
           tar xvf build.tar.gz
+          tar xvf ota.tar.gz
     - name: Install esptool
       run: pip install esptool
     # Assume the self-hosted runner has a $HOME/credentials.json file
