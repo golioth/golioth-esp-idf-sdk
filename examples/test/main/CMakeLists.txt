@@ -7,6 +7,7 @@ idf_component_register(
         "../../common/nvs.c"
         "../../common/time.c"
         "../../common/shell.c"
+        "../../common/fw_update.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "console"

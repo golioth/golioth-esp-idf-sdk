@@ -15,10 +15,13 @@
 #include "wifi.h"
 #include "time.h"
 #include "shell.h"
+#include "fw_update.h"
 #include "util.h"
 #include "golioth.h"
 
 #define TAG "test"
+
+static const char* _current_version = "1.2.3";
 
 static SemaphoreHandle_t _connected_sem;
 static SemaphoreHandle_t _disconnected_sem;
@@ -50,6 +53,9 @@ static void test_golioth_client_create(void) {
         _client = golioth_client_create(nvs_read_golioth_psk_id(), nvs_read_golioth_psk());
         TEST_ASSERT_NOT_NULL(_client);
         golioth_client_register_event_callback(_client, on_client_event, NULL);
+
+        // Start the fw_update task
+        fw_update_init(_client, _current_version);
     }
 }
 
