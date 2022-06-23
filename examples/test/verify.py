@@ -117,6 +117,11 @@ def run_ota_test(ser):
     # Issue the start_ota command one last time to finalize the OTA process
     ser.write('start_ota\r\n'.encode())
     wait_for_str_in_line(ser, 'Firmware updated successfully!')
+
+    # A final reset, to make sure OTA partitions are stable, no accidental rollbacks
+    reset(ser)
+    ser.write('start_ota\r\n'.encode())
+    wait_for_str_in_line(ser, 'Manifest does not contain different firmware version')
     return 0
 
 def main():

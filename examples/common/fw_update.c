@@ -73,6 +73,7 @@ static void fw_update_rollback_and_reboot(void) {
 }
 
 static void fw_update_cancel_rollback(void) {
+    esp_ota_mark_app_valid_cancel_rollback();
     ESP_LOGI(TAG, "State = Idle");
     golioth_ota_report_state_sync(
             _client,
