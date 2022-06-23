@@ -5,11 +5,11 @@ from time import time
 import re
 import json
 
-def wait_for_str_in_line(ser, str, timeout_s=10):
+def wait_for_str_in_line(ser, str, timeout_s=10, log=True):
     start_time = time()
     while True:
         line = ser.readline().decode('utf-8', errors='replace').replace("\r\n", "")
-        if line != "":
+        if line != "" and log:
             print(line)
         if "CPU halted" in line:
             raise RuntimeError(line)
@@ -21,16 +21,22 @@ def wait_for_str_in_line(ser, str, timeout_s=10):
 def set_credentials(ser):
     with open('credentials.json', 'r') as f:
         settings = json.load(f)
+
+    print('===== Setting credentials via CLI (logging disabled) ====')
     ser.write('\r\n'.encode())
-    wait_for_str_in_line(ser, 'esp32>')
+    wait_for_str_in_line(ser, 'esp32>', log=False)
     ser.write('settings set wifi/ssid {}\r\n'.format(settings['wifi/ssid']).encode())
-    wait_for_str_in_line(ser, 'esp32>')
+    wait_for_str_in_line(ser, 'saved', log=False)
+    wait_for_str_in_line(ser, 'esp32>', log=False)
     ser.write('settings set wifi/psk {}\r\n'.format(settings['wifi/psk']).encode())
-    wait_for_str_in_line(ser, 'esp32>')
+    wait_for_str_in_line(ser, 'saved', log=False)
+    wait_for_str_in_line(ser, 'esp32>', log=False)
     ser.write('settings set golioth/psk-id {}\r\n'.format(settings['golioth/psk-id']).encode())
-    wait_for_str_in_line(ser, 'esp32>')
+    wait_for_str_in_line(ser, 'saved', log=False)
+    wait_for_str_in_line(ser, 'esp32>', log=False)
     ser.write('settings set golioth/psk {}\r\n'.format(settings['golioth/psk']).encode())
-    wait_for_str_in_line(ser, 'esp32>')
+    wait_for_str_in_line(ser, 'saved', log=False)
+    wait_for_str_in_line(ser, 'esp32>', log=False)
 
 def reset(ser):
     ser.write('\r\n'.encode())
@@ -77,24 +83,39 @@ def run_built_in_tests(ser):
             print('================ END OF DEVICE OUTPUT ================')
             for tr in test_results:
                 print(tr)
-
-            if num_test_failures == 0:
-                green_print('------------------------')
-                print('')
-                green_print('  ✓ All Tests Passed 🎉')
-                print('')
-                green_print('------------------------')
-            else:
-                red_print('------------------------')
-                print('')
-                red_print('  ✗ Failed {} Tests'.format(num_test_failures))
-                print('')
-                red_print('------------------------')
-
             return num_test_failures
 
         if re.search(unity_test_end_re, line):
             test_results.append(line)
+
+def run_ota_test(ser):
+    ser.write('\r\n'.encode())
+    wait_for_str_in_line(ser, 'esp32>')
+    ser.write('start_ota\r\n'.encode())
+    wait_for_str_in_line(ser, 'State = Downloading')
+    wait_for_str_in_line(ser, 'Erasing flash')
+    wait_for_str_in_line(ser, 'Received response')
+
+    # At this point the download is proceeding, so wait up to 8 minutes for it to complete.
+    wait_for_str_in_line(ser, 'Total bytes written', 480)
+
+    wait_for_str_in_line(ser, 'State = Downloaded')
+    wait_for_str_in_line(ser, 'State = Updating')
+    wait_for_str_in_line(ser, 'Rebooting into new image')
+    wait_for_str_in_line(ser, 'heap_init') # on new boot
+    wait_for_str_in_line(ser, 'esp32>')
+    ser.write('\r\n'.encode())
+    wait_for_str_in_line(ser, 'esp32>')
+
+    # Issue the start_ota command one last time to finalize the OTA process
+    ser.write('start_ota\r\n'.encode())
+    wait_for_str_in_line(ser, 'Firmware updated successfully!')
+
+    # A final reset, to make sure OTA partitions are stable, no accidental rollbacks
+    reset(ser)
+    ser.write('start_ota\r\n'.encode())
+    wait_for_str_in_line(ser, 'Manifest does not contain different firmware version')
+    return 0
 
 def main():
     if len(sys.argv) != 2:
@@ -111,6 +132,21 @@ def main():
 
     # Run built in tests on the device and check output
     num_test_failures = run_built_in_tests(ser)
+    num_test_failures += run_ota_test(ser)
+
+    if num_test_failures == 0:
+        green_print('---------------------------')
+        print('')
+        green_print('  ✓ All Tests Passed 🎉')
+        print('')
+        green_print('---------------------------')
+    else:
+        red_print('---------------------------')
+        print('')
+        red_print('  ✗ Failed {} Tests'.format(num_test_failures))
+        print('')
+        red_print('---------------------------')
+
     sys.exit(num_test_failures)
 
 if __name__ == "__main__":

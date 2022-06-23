@@ -527,9 +527,9 @@ coap_io_loop_once(golioth_coap_client_t* client, coap_context_t* context, coap_s
             CONFIG_GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS / portTICK_PERIOD_MS);
     if (!got_request_msg) {
         // No requests, so process other pending IO (e.g. observations)
-        ESP_LOGD(TAG, "Idle io process start");
+        ESP_LOGV(TAG, "Idle io process start");
         coap_io_process(context, COAP_IO_NO_WAIT);
-        ESP_LOGD(TAG, "Idle io process end");
+        ESP_LOGV(TAG, "Idle io process end");
         return GOLIOTH_OK;
     }
 
@@ -712,6 +712,9 @@ static void golioth_coap_client_task(void* arg) {
             coap_free_context(coap_context);
         }
         coap_cleanup();
+
+        // Small delay before start a new session
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
@@ -900,6 +903,8 @@ golioth_status_t golioth_coap_client_set(
     golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
     uint8_t* request_payload = NULL;
+
+    // TODO - if stopped or stop pending, don't enqueue the request, return early
 
     if (payload_size > 0) {
         // We will allocate memory and copy the payload

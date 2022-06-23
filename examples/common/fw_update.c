@@ -73,6 +73,7 @@ static void fw_update_rollback_and_reboot(void) {
 }
 
 static void fw_update_cancel_rollback(void) {
+    esp_ota_mark_app_valid_cancel_rollback();
     ESP_LOGI(TAG, "State = Idle");
     golioth_ota_report_state_sync(
             _client,
@@ -124,7 +125,6 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
     ESP_LOGI(TAG, "Image size = %zu", _main_component->size);
     size_t nblocks = golioth_ota_size_to_nblocks(_main_component->size);
     size_t bytes_written = 0;
-    uint32_t bytesum = 0;
     for (size_t i = 0; i < nblocks; i++) {
         size_t block_nbytes = 0;
 
@@ -143,11 +143,6 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
         }
 
         assert(block_nbytes <= GOLIOTH_OTA_BLOCKSIZE);
-
-        for (size_t b = 0; b < block_nbytes; b++) {
-            bytesum += _ota_block_buffer[i];
-            ESP_LOGD(TAG, "Got block index %d, nbytes %zu, sum %zu", i, block_nbytes, bytesum);
-        }
 
         if (i == 0) {
             if (!header_valid(_ota_block_buffer, block_nbytes)) {
