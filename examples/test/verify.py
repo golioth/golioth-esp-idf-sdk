@@ -77,20 +77,6 @@ def run_built_in_tests(ser):
             print('================ END OF DEVICE OUTPUT ================')
             for tr in test_results:
                 print(tr)
-
-            if num_test_failures == 0:
-                green_print('------------------------')
-                print('')
-                green_print('  ✓ All Tests Passed 🎉')
-                print('')
-                green_print('------------------------')
-            else:
-                red_print('------------------------')
-                print('')
-                red_print('  ✗ Failed {} Tests'.format(num_test_failures))
-                print('')
-                red_print('------------------------')
-
             return num_test_failures
 
         if re.search(unity_test_end_re, line):
@@ -141,6 +127,20 @@ def main():
     # Run built in tests on the device and check output
     num_test_failures = run_built_in_tests(ser)
     num_test_failures += run_ota_test(ser)
+
+    if num_test_failures == 0:
+        green_print('---------------------------')
+        print('')
+        green_print('  ✓ All Tests Passed 🎉')
+        print('')
+        green_print('---------------------------')
+    else:
+        red_print('---------------------------')
+        print('')
+        red_print('  ✗ Failed {} Tests'.format(num_test_failures))
+        print('')
+        red_print('---------------------------')
+
     sys.exit(num_test_failures)
 
 if __name__ == "__main__":
