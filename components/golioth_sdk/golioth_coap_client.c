@@ -417,7 +417,7 @@ add_observation(golioth_coap_client_t* client, const golioth_coap_observe_params
     }
 
     obs_info->in_use = true;
-    obs_info->req_params = *params;
+    memcpy(&obs_info->req_params, params, sizeof(obs_info->req_params));
     memcpy(obs_info->token, client->token, client->token_len);
     obs_info->token_len = client->token_len;
 }
@@ -569,14 +569,14 @@ coap_io_loop_once(golioth_coap_client_t* client, coap_context_t* context, coap_s
             request_is_valid = false;
             break;
     }
+
     if (!request_is_valid) {
         return GOLIOTH_OK;
     }
 
-
     // If we get here, then a confirmable request has been sent to the server,
     // and we should wait for a response.
-    client->pending_req = request_msg;
+    memcpy(&client->pending_req, &request_msg, sizeof(request_msg));
     client->got_coap_response = false;
     int32_t time_spent_waiting_ms = 0;
     int32_t timeout_ms = CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_S * 1000;
@@ -944,13 +944,13 @@ golioth_status_t golioth_coap_client_set(
             .post =
                     {
                             .path_prefix = path_prefix,
-                            .path = path,
                             .content_type = content_type,
                             .payload = request_payload,
                             .payload_size = payload_size,
                     },
             .request_complete_sem = request_complete_sem,
     };
+    strncpy(request_msg.post.path, path, sizeof(request_msg.post.path) - 1);
 
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
@@ -1009,10 +1009,10 @@ golioth_status_t golioth_coap_client_delete(
             .delete =
                     {
                             .path_prefix = path_prefix,
-                            .path = path,
                     },
             .request_complete_sem = request_complete_sem,
     };
+    strncpy(request_msg.delete.path, path, sizeof(request_msg.delete.path) - 1);
 
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
@@ -1097,11 +1097,11 @@ golioth_status_t golioth_coap_client_get(
         bool is_synchronous) {
     golioth_coap_get_params_t params = {
             .path_prefix = path_prefix,
-            .path = path,
             .content_type = content_type,
             .callback = callback,
             .arg = arg,
     };
+    strncpy(params.path, path, sizeof(params.path) - 1);
     return golioth_coap_client_get_internal(
             client, GOLIOTH_COAP_REQUEST_GET, &params, is_synchronous);
 }
@@ -1118,13 +1118,13 @@ golioth_status_t golioth_coap_client_get_block(
         bool is_synchronous) {
     golioth_coap_get_block_params_t params = {
             .path_prefix = path_prefix,
-            .path = path,
             .content_type = content_type,
             .block_index = block_index,
             .block_size = block_size,
             .callback = callback,
             .arg = arg,
     };
+    strncpy(params.path, path, sizeof(params.path) - 1);
     return golioth_coap_client_get_internal(
             client, GOLIOTH_COAP_REQUEST_GET_BLOCK, &params, is_synchronous);
 }
@@ -1151,12 +1151,13 @@ golioth_status_t golioth_coap_client_observe_async(
             .observe =
                     {
                             .path_prefix = path_prefix,
-                            .path = path,
                             .content_type = content_type,
                             .callback = callback,
                             .arg = arg,
                     },
     };
+    strncpy(request_msg.observe.path, path, sizeof(request_msg.observe.path) - 1);
+
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
         ESP_LOGW(TAG, "Failed to enqueue request, queue full");

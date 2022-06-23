@@ -16,9 +16,9 @@
 
 typedef struct {
     // The CoAP path string (everything after coaps://coap.golioth.io/).
-    // Assumption: path is a string literal (i.e. we don't need to strcpy).
+    // Assumption: path_prefix is a string literal (i.e. we don't need to strcpy).
     const char* path_prefix;
-    const char* path;
+    char path[CONFIG_GOLIOTH_COAP_MAX_PATH_LEN + 1];
     // Must be one of:
     //   COAP_MEDIATYPE_APPLICATION_JSON
     //   COAP_MEDIATYPE_APPLICATION_CBOR
@@ -32,7 +32,7 @@ typedef struct {
 
 typedef struct {
     const char* path_prefix;
-    const char* path;
+    char path[CONFIG_GOLIOTH_COAP_MAX_PATH_LEN + 1];
     uint32_t content_type;
     golioth_get_cb_fn callback;
     void* arg;
@@ -40,7 +40,7 @@ typedef struct {
 
 typedef struct {
     const char* path_prefix;
-    const char* path;
+    char path[CONFIG_GOLIOTH_COAP_MAX_PATH_LEN + 1];
     uint32_t content_type;
     size_t block_index;
     size_t block_size;
@@ -50,12 +50,12 @@ typedef struct {
 
 typedef struct {
     const char* path_prefix;
-    const char* path;
+    char path[CONFIG_GOLIOTH_COAP_MAX_PATH_LEN + 1];
 } golioth_coap_delete_params_t;
 
 typedef struct {
     const char* path_prefix;
-    const char* path;
+    char path[CONFIG_GOLIOTH_COAP_MAX_PATH_LEN + 1];
     uint32_t content_type;
     golioth_get_cb_fn callback;
     void* arg;

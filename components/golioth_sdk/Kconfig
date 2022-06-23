@@ -84,4 +84,11 @@ config GOLIOTH_OTA_MAX_NUM_COMPONENTS
     help
         Maximum number of components in an OTA manifest
 
+config GOLIOTH_COAP_MAX_PATH_LEN
+    int "Golioth maximum CoAP path length"
+    default 39
+    help
+        Maximum length of a CoAP path (everything after
+        "coaps://coap.golioth.io/").
+
 endmenu
