@@ -855,6 +855,11 @@ golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_sync
     golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
 
+    if (!c->is_running || c->end_session) {
+        ESP_LOGW(TAG, "Client not running, dropping request");
+        return GOLIOTH_ERR_INVALID_STATE;
+    }
+
     if (is_synchronous) {
         request_complete_sem = xSemaphoreCreateBinary();
         if (!request_complete_sem) {
@@ -904,7 +909,10 @@ golioth_status_t golioth_coap_client_set(
     SemaphoreHandle_t request_complete_sem = NULL;
     uint8_t* request_payload = NULL;
 
-    // TODO - if stopped or stop pending, don't enqueue the request, return early
+    if (!c->is_running || c->end_session) {
+        ESP_LOGW(TAG, "Client not running, dropping request for path %s", path);
+        return GOLIOTH_ERR_INVALID_STATE;
+    }
 
     if (payload_size > 0) {
         // We will allocate memory and copy the payload
@@ -982,6 +990,11 @@ golioth_status_t golioth_coap_client_delete(
     golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
 
+    if (!c->is_running || c->end_session) {
+        ESP_LOGW(TAG, "Client not running, dropping request for path %s", path);
+        return GOLIOTH_ERR_INVALID_STATE;
+    }
+
     if (is_synchronous) {
         request_complete_sem = xSemaphoreCreateBinary();
         if (!request_complete_sem) {
@@ -1031,6 +1044,11 @@ static golioth_status_t golioth_coap_client_get_internal(
 
     golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
+
+    if (!c->is_running || c->end_session) {
+        ESP_LOGW(TAG, "Client not running, dropping get request");
+        return GOLIOTH_ERR_INVALID_STATE;
+    }
 
     if (is_synchronous) {
         request_complete_sem = xSemaphoreCreateBinary();
@@ -1121,6 +1139,11 @@ golioth_status_t golioth_coap_client_observe_async(
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
         return GOLIOTH_ERR_NULL;
+    }
+
+    if (!c->is_running || c->end_session) {
+        ESP_LOGW(TAG, "Client not running, dropping request for path %s", path);
+        return GOLIOTH_ERR_INVALID_STATE;
     }
 
     golioth_coap_request_msg_t request_msg = {
