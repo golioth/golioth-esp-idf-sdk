@@ -21,15 +21,21 @@ def wait_for_str_in_line(ser, str, timeout_s=10, log=True):
 def set_credentials(ser):
     with open('credentials.json', 'r') as f:
         settings = json.load(f)
+
+    print('===== Setting credentials via CLI (logging disabled) ====')
     ser.write('\r\n'.encode())
     wait_for_str_in_line(ser, 'esp32>', log=False)
     ser.write('settings set wifi/ssid {}\r\n'.format(settings['wifi/ssid']).encode())
+    wait_for_str_in_line(ser, 'saved', log=False)
     wait_for_str_in_line(ser, 'esp32>', log=False)
     ser.write('settings set wifi/psk {}\r\n'.format(settings['wifi/psk']).encode())
+    wait_for_str_in_line(ser, 'saved', log=False)
     wait_for_str_in_line(ser, 'esp32>', log=False)
     ser.write('settings set golioth/psk-id {}\r\n'.format(settings['golioth/psk-id']).encode())
+    wait_for_str_in_line(ser, 'saved', log=False)
     wait_for_str_in_line(ser, 'esp32>', log=False)
     ser.write('settings set golioth/psk {}\r\n'.format(settings['golioth/psk']).encode())
+    wait_for_str_in_line(ser, 'saved', log=False)
     wait_for_str_in_line(ser, 'esp32>', log=False)
 
 def reset(ser):
