@@ -67,8 +67,6 @@ static void test_client_stop_and_start(void) {
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_disconnected_sem, 3000 / portTICK_PERIOD_MS));
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_start(_client));
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_stop(_client));
-    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_disconnected_sem, 3000 / portTICK_PERIOD_MS));
 }
 
 static void test_wifi_stop_and_start(void) {
@@ -86,13 +84,6 @@ static void test_golioth_client_heap_usage(void) {
 }
 
 static int built_in_test(int argc, char** argv) {
-    if (!_connected_sem) {
-        _connected_sem = xSemaphoreCreateBinary();
-    }
-    if (!_disconnected_sem) {
-        _disconnected_sem = xSemaphoreCreateBinary();
-    }
-
     UNITY_BEGIN();
     RUN_TEST(test_connects_to_wifi);
     if (!_initial_free_heap) {
@@ -111,13 +102,21 @@ static int built_in_test(int argc, char** argv) {
 }
 
 static int start_ota(int argc, char** argv) {
-    assert(_client);
+    // Ensure we have a connected client (in case this is the first command run)
+    if (!_client) {
+        test_connects_to_wifi();
+        test_golioth_client_create();
+        test_connects_to_golioth();
+    }
     fw_update_init(_client, _current_version);
     return 0;
 }
 
 void app_main(void) {
     nvs_init();
+
+    _connected_sem = xSemaphoreCreateBinary();
+    _disconnected_sem = xSemaphoreCreateBinary();
 
     esp_console_cmd_t built_in_test_cmd = {
             .command = "built_in_test",

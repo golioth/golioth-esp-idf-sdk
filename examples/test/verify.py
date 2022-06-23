@@ -96,6 +96,29 @@ def run_built_in_tests(ser):
         if re.search(unity_test_end_re, line):
             test_results.append(line)
 
+def run_ota_test(ser):
+    ser.write('\r\n'.encode())
+    wait_for_str_in_line(ser, 'esp32>')
+    ser.write('start_ota\r\n'.encode())
+    wait_for_str_in_line(ser, 'State = Downloading')
+    wait_for_str_in_line(ser, 'Erasing flash')
+    wait_for_str_in_line(ser, 'Received response')
+
+    # At this point the download is proceeding, so wait up to 3 minutes for it to complete.
+    wait_for_str_in_line(ser, 'Total bytes written', 180)
+    wait_for_str_in_line(ser, 'State = Downloaded')
+    wait_for_str_in_line(ser, 'State = Updating')
+    wait_for_str_in_line(ser, 'Rebooting into new image')
+    wait_for_str_in_line(ser, 'heap_init') # on new boot
+    wait_for_str_in_line(ser, 'esp32>')
+    ser.write('\r\n'.encode())
+    wait_for_str_in_line(ser, 'esp32>')
+
+    # Issue the start_ota command one last time to finalize the OTA process
+    ser.write('start_ota\r\n'.encode())
+    wait_for_str_in_line(ser, 'Firmware updated successfully!')
+    return 0
+
 def main():
     if len(sys.argv) != 2:
         print('usage: {} <port>'.format(sys.argv[0]))
@@ -111,6 +134,7 @@ def main():
 
     # Run built in tests on the device and check output
     num_test_failures = run_built_in_tests(ser)
+    num_test_failures += run_ota_test(ser)
     sys.exit(num_test_failures)
 
 if __name__ == "__main__":
