@@ -182,9 +182,9 @@ static int settings(int argc, char** argv) {
             }
         } else {
             if (success) {
-                printf("Setting %s saved as %s\n", cli_key, value);
+                printf("Setting %s saved\n", cli_key);
             } else {
-                printf("Failed to save setting %s:%s\n", cli_key, value);
+                printf("Failed to save setting %s\n", cli_key);
             }
         }
     } else if (0 == strcmp(command, "erase")) {
