@@ -85,6 +85,7 @@ golioth_status_t golioth_ota_payload_as_manifest(
         size_t payload_len,
         golioth_ota_manifest_t* manifest) {
     golioth_status_t ret = GOLIOTH_OK;
+    memset(manifest, 0, sizeof(*manifest));
 
     cJSON* json = cJSON_ParseWithLength((const char*)payload, payload_len);
     if (!json) {
