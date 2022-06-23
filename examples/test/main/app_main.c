@@ -83,6 +83,22 @@ static void test_golioth_client_heap_usage(void) {
     TEST_ASSERT_TRUE(golioth_heap_usage < 50000);
 }
 
+static void test_request_dropped_if_client_not_running(void) {
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_stop(_client));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_disconnected_sem, 3000 / portTICK_PERIOD_MS));
+
+    // Verify each request type returns proper state
+    TEST_ASSERT_EQUAL(GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_set_int_async(_client, "a", 1));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_get_async(_client, "a", NULL, NULL));
+    TEST_ASSERT_EQUAL(GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_delete_async(_client, "a"));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_observe_async(_client, "a", NULL, NULL));
+
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_start(_client));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
+}
+
 static int built_in_test(int argc, char** argv) {
     UNITY_BEGIN();
     RUN_TEST(test_connects_to_wifi);
@@ -96,6 +112,7 @@ static int built_in_test(int argc, char** argv) {
     RUN_TEST(test_golioth_client_heap_usage);
     RUN_TEST(test_client_stop_and_start);
     RUN_TEST(test_wifi_stop_and_start);
+    RUN_TEST(test_request_dropped_if_client_not_running);
     UNITY_END();
 
     return 0;
