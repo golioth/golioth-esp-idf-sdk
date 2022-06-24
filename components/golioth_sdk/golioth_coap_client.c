@@ -96,8 +96,6 @@ static coap_response_t coap_response_handler(
     coap_pdu_type_t rcv_type = coap_pdu_get_type(received);
     uint8_t class = rcvd_code >> 5;
     uint8_t code = rcvd_code & 0x1F;
-    ;
-    ESP_LOGD(TAG, "%d.%02d", class, code);
 
     if (rcv_type == COAP_MESSAGE_RST) {
         ESP_LOGW(TAG, "Got RST");
@@ -113,6 +111,35 @@ static coap_response_t coap_response_handler(
     coap_context_t* coap_context = coap_session_get_context(session);
     golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
 
+    // Get the original/pending request info
+    const golioth_coap_request_msg_t* req = &client->pending_req;
+
+    if (req) {
+        if (req->type == GOLIOTH_COAP_REQUEST_EMPTY) {
+            ESP_LOGD(TAG, "%d.%02d (empty req)", class, code);
+        } else if (class != 2) {  // not 2.XX, i.e. not success
+            ESP_LOGW(
+                    TAG,
+                    "%d.%02d (req type: %d, path: %s%s)",
+                    class,
+                    code,
+                    req->type,
+                    req->get.path_prefix,
+                    req->get.path);
+        } else {
+            ESP_LOGD(
+                    TAG,
+                    "%d.%02d (req type: %d, path: %s%s)",
+                    class,
+                    code,
+                    req->type,
+                    req->get.path_prefix,
+                    req->get.path);
+        }
+    } else {
+        ESP_LOGD(TAG, "%d.%02d (unsolicited)", class, code);
+    }
+
     const uint8_t* data = NULL;
     size_t data_len = 0;
     coap_get_data(received, &data_len, &data);
@@ -126,25 +153,14 @@ static coap_response_t coap_response_handler(
             }
         }
 
-        if (client->pending_req.type == GOLIOTH_COAP_REQUEST_GET) {
-            if (client->pending_req.get.callback) {
-                client->pending_req.get.callback(
-                        client,
-                        &response,
-                        client->pending_req.get.path,
-                        data,
-                        data_len,
-                        client->pending_req.get.arg);
+        if (req->type == GOLIOTH_COAP_REQUEST_GET) {
+            if (req->get.callback) {
+                req->get.callback(client, &response, req->get.path, data, data_len, req->get.arg);
             }
-        } else if (client->pending_req.type == GOLIOTH_COAP_REQUEST_GET_BLOCK) {
-            if (client->pending_req.get_block.callback) {
-                client->pending_req.get_block.callback(
-                        client,
-                        &response,
-                        client->pending_req.get_block.path,
-                        data,
-                        data_len,
-                        client->pending_req.get_block.arg);
+        } else if (req->type == GOLIOTH_COAP_REQUEST_GET_BLOCK) {
+            if (req->get_block.callback) {
+                req->get_block.callback(
+                        client, &response, req->get_block.path, data, data_len, req->get_block.arg);
             }
         }
     }
