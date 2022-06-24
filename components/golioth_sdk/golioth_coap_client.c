@@ -39,6 +39,7 @@ typedef struct {
     uint8_t token[8];  // token of the pending request
     size_t token_len;
     bool got_coap_response;
+    golioth_response_t response;
     const char* psk_id;
     size_t psk_id_len;
     const char* psk;
@@ -111,41 +112,44 @@ static coap_response_t coap_response_handler(
     coap_context_t* coap_context = coap_session_get_context(session);
     golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
 
+    const uint8_t* data = NULL;
+    size_t data_len = 0;
+    coap_get_data(received, &data_len, &data);
+
     // Get the original/pending request info
     const golioth_coap_request_msg_t* req = &client->pending_req;
 
     if (req) {
         if (req->type == GOLIOTH_COAP_REQUEST_EMPTY) {
-            ESP_LOGD(TAG, "%d.%02d (empty req)", class, code);
+            ESP_LOGD(TAG, "%d.%02d (empty req), len %zu", class, code, data_len);
         } else if (class != 2) {  // not 2.XX, i.e. not success
             ESP_LOGW(
                     TAG,
-                    "%d.%02d (req type: %d, path: %s%s)",
+                    "%d.%02d (req type: %d, path: %s%s), len %zu",
                     class,
                     code,
                     req->type,
                     req->get.path_prefix,
-                    req->get.path);
+                    req->get.path,
+                    data_len);
         } else {
             ESP_LOGD(
                     TAG,
-                    "%d.%02d (req type: %d, path: %s%s)",
+                    "%d.%02d (req type: %d, path: %s%s), len %zu",
                     class,
                     code,
                     req->type,
                     req->get.path_prefix,
-                    req->get.path);
+                    req->get.path,
+                    data_len);
         }
     } else {
-        ESP_LOGD(TAG, "%d.%02d (unsolicited)", class, code);
+        ESP_LOGD(TAG, "%d.%02d (unsolicited), len %zu", class, code, data_len);
     }
-
-    const uint8_t* data = NULL;
-    size_t data_len = 0;
-    coap_get_data(received, &data_len, &data);
 
     if (token_matches_request(received, client)) {
         client->got_coap_response = true;
+        client->response = response;
 
         if (CONFIG_GOLIOTH_COAP_KEEPALIVE_INTERVAL_S > 0) {
             if (!xTimerReset(client->keepalive_timer, 0)) {
@@ -942,6 +946,11 @@ golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_sync
 
     if (is_synchronous) {
         xSemaphoreTake(request_complete_sem, portMAX_DELAY);
+        if (!c->got_coap_response) {
+            ret = GOLIOTH_ERR_TIMEOUT;
+        } else {
+            ret = c->response.status;
+        }
     }
 
 cleanup:
@@ -1024,6 +1033,11 @@ golioth_status_t golioth_coap_client_set(
 
     if (is_synchronous) {
         xSemaphoreTake(request_complete_sem, portMAX_DELAY);
+        if (!c->got_coap_response) {
+            ret = GOLIOTH_ERR_TIMEOUT;
+        } else {
+            ret = c->response.status;
+        }
     }
 
 cleanup:
@@ -1090,6 +1104,11 @@ golioth_status_t golioth_coap_client_delete(
 
     if (is_synchronous) {
         xSemaphoreTake(request_complete_sem, portMAX_DELAY);
+        if (!c->got_coap_response) {
+            ret = GOLIOTH_ERR_TIMEOUT;
+        } else {
+            ret = c->response.status;
+        }
     }
 
 cleanup:
@@ -1145,6 +1164,11 @@ static golioth_status_t golioth_coap_client_get_internal(
 
     if (is_synchronous) {
         xSemaphoreTake(request_complete_sem, portMAX_DELAY);
+        if (!c->got_coap_response) {
+            ret = GOLIOTH_ERR_TIMEOUT;
+        } else {
+            ret = c->response.status;
+        }
     }
 
 cleanup:
@@ -1244,4 +1268,12 @@ void golioth_client_register_event_callback(
     }
     c->event_callback = callback;
     c->event_callback_arg = arg;
+}
+
+uint32_t golioth_client_task_stack_min_remaining(golioth_client_t client) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return 0;
+    }
+    return uxTaskGetStackHighWaterMark(c->coap_task_handle);
 }

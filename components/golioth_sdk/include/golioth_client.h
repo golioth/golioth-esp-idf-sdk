@@ -62,3 +62,5 @@ void golioth_client_register_event_callback(
         golioth_client_t client,
         golioth_client_event_cb_fn callback,
         void* arg);
+
+uint32_t golioth_client_task_stack_min_remaining(golioth_client_t client);
