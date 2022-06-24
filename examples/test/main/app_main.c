@@ -69,13 +69,6 @@ static void test_client_stop_and_start(void) {
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
 }
 
-static void test_wifi_stop_and_start(void) {
-    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_stop());
-    vTaskDelay(1000 / portTICK_PERIOD_MS);
-    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_start());
-    TEST_ASSERT_TRUE(wifi_wait_for_connected_with_timeout(10));
-}
-
 static void test_golioth_client_heap_usage(void) {
     uint32_t post_connect_free_heap = esp_get_free_heap_size();
     int32_t golioth_heap_usage = _initial_free_heap - post_connect_free_heap;
@@ -99,7 +92,76 @@ static void test_request_dropped_if_client_not_running(void) {
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
 }
 
-static void test_request_timeout_if_wifi_disconnects(void) {}
+static void test_lightdb_set_get_sync(void) {
+    int randint = rand();
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_sync(_client, "test_int", randint));
+
+    int get_randint = 0;
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_get_int_sync(_client, "test_int", &get_randint));
+    TEST_ASSERT_EQUAL(randint, get_randint);
+}
+
+static bool _on_test_int2_called = false;
+static void on_test_int2(
+        golioth_client_t client,
+        const golioth_response_t* response,
+        const char* path,
+        const uint8_t* payload,
+        size_t payload_size,
+        void* arg) {
+    _on_test_int2_called = true;
+    int32_t expected_value = (int32_t)arg;
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, response->status);
+    TEST_ASSERT_EQUAL(2, response->class);
+    TEST_ASSERT_EQUAL(5, response->code);
+    TEST_ASSERT_EQUAL(expected_value, golioth_payload_as_int(payload, payload_size));
+}
+
+static void test_lightdb_set_get_async(void) {
+    int randint = rand();
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_async(_client, "test_int2", randint));
+
+    // Wait a bit...there's currently no way to know when an async set has finished
+    delay_ms(500);
+
+    _on_test_int2_called = false;
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_OK,
+            golioth_lightdb_get_async(_client, "test_int2", on_test_int2, (void*)randint));
+    // Value is verified in the callback
+    delay_ms(500);
+    TEST_ASSERT_TRUE(_on_test_int2_called);
+}
+
+static bool _on_test_timeout_called = false;
+static void on_test_timeout(
+        golioth_client_t client,
+        const golioth_response_t* response,
+        const char* path,
+        const uint8_t* payload,
+        size_t payload_size,
+        void* arg) {
+    _on_test_timeout_called = true;
+    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, response->status);
+    TEST_ASSERT_EQUAL(NULL, payload);
+    TEST_ASSERT_EQUAL(0, payload_size);
+}
+
+static void test_request_timeout_if_wifi_disconnected(void) {
+    // Send async get request, then immediately disconnect wifi.
+    // Verify request callback gets called with GOLIOTH_ERR_TIMEOUT.
+    _on_test_timeout_called = false;
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_OK, golioth_lightdb_get_async(_client, "test_timeout", on_test_timeout, NULL));
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_stop());
+    delay_ms(1000 * (CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_S + 1));
+    TEST_ASSERT_TRUE(_on_test_timeout_called);
+
+    // Restart wifi for next test
+    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_start());
+    TEST_ASSERT_TRUE(wifi_wait_for_connected_with_timeout(10));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
+}
 
 static int built_in_test(int argc, char** argv) {
     UNITY_BEGIN();
@@ -113,9 +175,10 @@ static int built_in_test(int argc, char** argv) {
     RUN_TEST(test_connects_to_golioth);
     RUN_TEST(test_golioth_client_heap_usage);
     RUN_TEST(test_client_stop_and_start);
-    RUN_TEST(test_wifi_stop_and_start);
     RUN_TEST(test_request_dropped_if_client_not_running);
-    RUN_TEST(test_request_timeout_if_wifi_disconnects);
+    RUN_TEST(test_lightdb_set_get_sync);
+    RUN_TEST(test_lightdb_set_get_async);
+    RUN_TEST(test_request_timeout_if_wifi_disconnected);
     UNITY_END();
 
     return 0;
