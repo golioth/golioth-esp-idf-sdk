@@ -99,6 +99,8 @@ static void test_request_dropped_if_client_not_running(void) {
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
 }
 
+static void test_request_timeout_if_wifi_disconnects(void) {}
+
 static int built_in_test(int argc, char** argv) {
     UNITY_BEGIN();
     RUN_TEST(test_connects_to_wifi);
@@ -113,6 +115,7 @@ static int built_in_test(int argc, char** argv) {
     RUN_TEST(test_client_stop_and_start);
     RUN_TEST(test_wifi_stop_and_start);
     RUN_TEST(test_request_dropped_if_client_not_running);
+    RUN_TEST(test_request_timeout_if_wifi_disconnects);
     UNITY_END();
 
     return 0;

@@ -62,7 +62,8 @@ static void notify_observers(
         const coap_pdu_t* received,
         golioth_coap_client_t* client,
         const uint8_t* data,
-        size_t data_len) {
+        size_t data_len,
+        const golioth_response_t* response) {
     // scan observations, check for token match
     for (int i = 0; i < CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS; i++) {
         const golioth_coap_observe_info_t* obs_info = &client->observations[i];
@@ -75,7 +76,13 @@ static void notify_observers(
         coap_bin_const_t rcvd_token = coap_pdu_get_token(received);
         bool len_matches = (rcvd_token.length == obs_info->token_len);
         if (len_matches && (0 == memcmp(rcvd_token.s, obs_info->token, obs_info->token_len))) {
-            callback(client, obs_info->req_params.path, data, data_len, obs_info->req_params.arg);
+            callback(
+                    client,
+                    response,
+                    obs_info->req_params.path,
+                    data,
+                    data_len,
+                    obs_info->req_params.arg);
         }
     }
 }
@@ -87,12 +94,21 @@ static coap_response_t coap_response_handler(
         const coap_mid_t mid) {
     coap_pdu_code_t rcvd_code = coap_pdu_get_code(received);
     coap_pdu_type_t rcv_type = coap_pdu_get_type(received);
-    ESP_LOGD(TAG, "%d.%02d", (rcvd_code >> 5), rcvd_code & 0x1F);
+    uint8_t class = rcvd_code >> 5;
+    uint8_t code = rcvd_code & 0x1F;
+    ;
+    ESP_LOGD(TAG, "%d.%02d", class, code);
 
     if (rcv_type == COAP_MESSAGE_RST) {
         ESP_LOGW(TAG, "Got RST");
         return COAP_RESPONSE_OK;
     }
+
+    golioth_response_t response = {
+            .status = (class == 2 ? GOLIOTH_OK : GOLIOTH_ERR_FAIL),
+            .class = class,
+            .code = code,
+    };
 
     coap_context_t* coap_context = coap_session_get_context(session);
     golioth_coap_client_t* client = (golioth_coap_client_t*)coap_get_app_data(coap_context);
@@ -114,6 +130,7 @@ static coap_response_t coap_response_handler(
             if (client->pending_req.get.callback) {
                 client->pending_req.get.callback(
                         client,
+                        &response,
                         client->pending_req.get.path,
                         data,
                         data_len,
@@ -123,6 +140,7 @@ static coap_response_t coap_response_handler(
             if (client->pending_req.get_block.callback) {
                 client->pending_req.get_block.callback(
                         client,
+                        &response,
                         client->pending_req.get_block.path,
                         data,
                         data_len,
@@ -131,7 +149,7 @@ static coap_response_t coap_response_handler(
         }
     }
 
-    notify_observers(received, client, data, data_len);
+    notify_observers(received, client, data, data_len, &response);
 
     return COAP_RESPONSE_OK;
 }
@@ -899,6 +917,8 @@ golioth_status_t golioth_coap_client_set(
         uint32_t content_type,
         const uint8_t* payload,
         size_t payload_size,
+        golioth_set_cb_fn callback,
+        void* callback_arg,
         bool is_synchronous) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
@@ -947,6 +967,8 @@ golioth_status_t golioth_coap_client_set(
                             .content_type = content_type,
                             .payload = request_payload,
                             .payload_size = payload_size,
+                            .callback = callback,
+                            .arg = callback_arg,
                     },
             .request_complete_sem = request_complete_sem,
     };
@@ -981,6 +1003,8 @@ golioth_status_t golioth_coap_client_delete(
         golioth_client_t client,
         const char* path_prefix,
         const char* path,
+        golioth_set_cb_fn callback,
+        void* callback_arg,
         bool is_synchronous) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
@@ -1009,6 +1033,8 @@ golioth_status_t golioth_coap_client_delete(
             .delete =
                     {
                             .path_prefix = path_prefix,
+                            .callback = callback,
+                            .arg = callback_arg,
                     },
             .request_complete_sem = request_complete_sem,
     };

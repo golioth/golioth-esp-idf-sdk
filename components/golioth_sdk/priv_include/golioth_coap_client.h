@@ -28,6 +28,8 @@ typedef struct {
     uint8_t* payload;
     // Size of payload, in bytes
     size_t payload_size;
+    golioth_set_cb_fn callback;
+    void* arg;
 } golioth_coap_post_params_t;
 
 typedef struct {
@@ -51,6 +53,8 @@ typedef struct {
 typedef struct {
     const char* path_prefix;
     char path[CONFIG_GOLIOTH_COAP_MAX_PATH_LEN + 1];
+    golioth_set_cb_fn callback;
+    void* arg;
 } golioth_coap_delete_params_t;
 
 typedef struct {
@@ -99,12 +103,16 @@ golioth_status_t golioth_coap_client_set(
         uint32_t content_type,
         const uint8_t* payload,
         size_t payload_size,
+        golioth_set_cb_fn callback,
+        void* callback_arg,
         bool is_synchronous);
 
 golioth_status_t golioth_coap_client_delete(
         golioth_client_t client,
         const char* path_prefix,
         const char* path,
+        golioth_set_cb_fn callback,
+        void* callback_arg,
         bool is_synchronous);
 
 golioth_status_t golioth_coap_client_get(
@@ -113,7 +121,7 @@ golioth_status_t golioth_coap_client_get(
         const char* path,
         uint32_t content_type,
         golioth_get_cb_fn callback,
-        void* arg,
+        void* callback_arg,
         bool is_synchronous);
 
 golioth_status_t golioth_coap_client_get_block(
@@ -124,7 +132,7 @@ golioth_status_t golioth_coap_client_get_block(
         size_t block_index,
         size_t block_size,
         golioth_get_cb_fn callback,
-        void* arg,
+        void* callback_arg,
         bool is_synchronous);
 
 golioth_status_t golioth_coap_client_observe_async(
@@ -133,4 +141,4 @@ golioth_status_t golioth_coap_client_observe_async(
         const char* path,
         uint32_t content_type,
         golioth_get_cb_fn callback,
-        void* arg);
+        void* callback_arg);

@@ -48,6 +48,8 @@ static golioth_status_t golioth_lightdb_set_int_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
             strlen(buf),
+            NULL,
+            NULL,
             is_synchronous);
 }
 
@@ -65,6 +67,8 @@ static golioth_status_t golioth_lightdb_set_bool_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)valuestr,
             strlen(valuestr),
+            NULL,
+            NULL,
             is_synchronous);
 }
 
@@ -83,6 +87,8 @@ static golioth_status_t golioth_lightdb_set_float_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
             strlen(buf),
+            NULL,
+            NULL,
             is_synchronous);
 }
 
@@ -113,7 +119,9 @@ static golioth_status_t golioth_lightdb_set_string_internal(
             path,
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
-            bufsize - 1,  // exluding NULL
+            bufsize - 1,  // excluding NULL
+            NULL,
+            NULL,
             is_synchronous);
 
     free(buf);
@@ -125,7 +133,7 @@ static golioth_status_t golioth_lightdb_delete_internal(
         const char* path_prefix,
         const char* path,
         bool is_synchronous) {
-    return golioth_coap_client_delete(client, path_prefix, path, is_synchronous);
+    return golioth_coap_client_delete(client, path_prefix, path, NULL, NULL, is_synchronous);
 }
 
 static golioth_status_t golioth_lightdb_get_internal(
@@ -159,6 +167,8 @@ static golioth_status_t golioth_lightdb_set_json_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)json_str,
             json_str_len,
+            NULL,
+            NULL,
             is_synchronous);
 }
 
@@ -291,32 +301,35 @@ golioth_status_t golioth_lightdb_set_json_sync(
 
 static void on_payload(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    lightdb_get_response_t* response = (lightdb_get_response_t*)arg;
+    lightdb_get_response_t* ldb_response = (lightdb_get_response_t*)arg;
+
+    // TODO - check response for errors
 
     if (golioth_payload_is_null(payload, payload_size)) {
-        response->is_null = true;
+        ldb_response->is_null = true;
         return;
     }
 
-    switch (response->type) {
+    switch (ldb_response->type) {
         case LIGHTDB_GET_TYPE_INT:
-            *response->i = golioth_payload_as_int(payload, payload_size);
+            *ldb_response->i = golioth_payload_as_int(payload, payload_size);
             break;
         case LIGHTDB_GET_TYPE_FLOAT:
-            *response->f = golioth_payload_as_float(payload, payload_size);
+            *ldb_response->f = golioth_payload_as_float(payload, payload_size);
             break;
         case LIGHTDB_GET_TYPE_BOOL:
-            *response->b = golioth_payload_as_bool(payload, payload_size);
+            *ldb_response->b = golioth_payload_as_bool(payload, payload_size);
             break;
         case LIGHTDB_GET_TYPE_STRING: {
             // Remove the leading and trailing quote to get the raw string value
-            size_t nbytes = min(response->strbuf_size - 1, payload_size - 2);
-            memcpy(response->strbuf, payload + 1 /* skip quote */, nbytes);
-            response->strbuf[nbytes] = 0;
+            size_t nbytes = min(ldb_response->strbuf_size - 1, payload_size - 2);
+            memcpy(ldb_response->strbuf, payload + 1 /* skip quote */, nbytes);
+            ldb_response->strbuf[nbytes] = 0;
         } break;
         default:
             assert(false);

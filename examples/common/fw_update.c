@@ -242,10 +242,12 @@ static golioth_status_t fw_update_change_boot_image(void) {
 
 static void on_ota_manifest(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    // TODO - check response for errors
     golioth_status_t status =
             golioth_ota_payload_as_manifest(payload, payload_size, &_ota_manifest);
     if (status != GOLIOTH_OK) {

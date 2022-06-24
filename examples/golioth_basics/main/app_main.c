@@ -19,16 +19,19 @@ static const char* _current_version = "1.2.3";
 
 static void on_float_value(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    // TODO - check response for errors
     float value = golioth_payload_as_float(payload, payload_size);
     ESP_LOGI(TAG, "Got float_value = %f", value);
 }
 
 static void on_my_setting(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
@@ -37,6 +40,8 @@ static void on_my_setting(
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
+
+    // TODO - check response for errors
 
     int32_t* actual_value_ptr = (int32_t*)arg;
     int32_t desired_value = golioth_payload_as_int(payload, payload_size);
@@ -58,10 +63,12 @@ static void example_json_set_async(golioth_client_t client) {
 
 static void on_example_json(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    // TODO - check response for errors
     cJSON* json = cJSON_ParseWithLength((const char*)payload, payload_size);
     if (!json) {
         ESP_LOGE(TAG, "Failed to parse example_json");

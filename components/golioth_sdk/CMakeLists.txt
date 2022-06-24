@@ -13,3 +13,7 @@ idf_component_register(
         "golioth_lightdb.c"
         "golioth_ota.c"
 )
+list(APPEND EXTRA_C_FLAGS_LIST
+    -Werror
+)
+component_compile_options(${EXTRA_C_FLAGS_LIST})

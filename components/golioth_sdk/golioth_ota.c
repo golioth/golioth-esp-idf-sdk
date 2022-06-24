@@ -77,6 +77,8 @@ golioth_status_t golioth_ota_report_state_sync(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)jsonbuf,
             strlen(jsonbuf),
+            NULL,
+            NULL,
             true);
 }
 
@@ -141,12 +143,15 @@ cleanup:
 
 static void on_block_rcvd(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
     assert(arg);
     assert(payload_size <= GOLIOTH_OTA_BLOCKSIZE);
+
+    // TODO - check response for errors
 
     block_get_output_params_t* out_params = (block_get_output_params_t*)arg;
     assert(out_params->buf);
