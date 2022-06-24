@@ -23,3 +23,7 @@ idf_component_register(
         "nvs_flash"
         "esp_adc_cal"
 )
+list(APPEND EXTRA_C_FLAGS_LIST
+    -Werror
+)
+component_compile_options(${EXTRA_C_FLAGS_LIST})

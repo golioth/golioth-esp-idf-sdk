@@ -66,10 +66,12 @@ static void on_client_event(golioth_client_t client, golioth_client_event_t even
 
 static void on_desired_buzz(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    // TODO - check response for errors
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
@@ -85,10 +87,12 @@ static void on_desired_buzz(
 
 static void on_desired_text(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    // TODO - check response for errors
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
@@ -131,10 +135,12 @@ static void set_led_from_json(uint32_t led_index, const cJSON* json) {
 
 static void on_desired_leds(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    // TODO - check response for errors
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }

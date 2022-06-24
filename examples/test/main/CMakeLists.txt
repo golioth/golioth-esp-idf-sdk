@@ -17,3 +17,7 @@ idf_component_register(
         "app_update"
         "unity"
 )
+list(APPEND EXTRA_C_FLAGS_LIST
+    -Werror
+)
+component_compile_options(${EXTRA_C_FLAGS_LIST})

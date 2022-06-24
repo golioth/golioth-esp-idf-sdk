@@ -15,3 +15,7 @@ idf_component_register(
         "json"
         "app_update"
 )
+list(APPEND EXTRA_C_FLAGS_LIST
+    -Werror
+)
+component_compile_options(${EXTRA_C_FLAGS_LIST})

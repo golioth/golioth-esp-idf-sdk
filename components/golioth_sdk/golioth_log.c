@@ -47,6 +47,8 @@ static golioth_status_t golioth_log_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)logbuf,
             msg_len,
+            NULL,
+            NULL,
             is_synchronous);
 }
 

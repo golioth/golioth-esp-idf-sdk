@@ -17,6 +17,16 @@ typedef enum {
     GOLIOTH_CLIENT_EVENT_DISCONNECTED,
 } golioth_client_event_t;
 
+typedef struct {
+    // One of:
+    //      GOLIOTH_ERR_TIMEOUT (no response received from server)
+    //      GOLIOTH_OK (2.XX)
+    //      GOLIOTH_ERR_FAIL (anything other than 2.XX)
+    golioth_status_t status;
+    uint8_t class;  // the 2 in 2.XX
+    uint8_t code;   // the 03 in 4.03
+} golioth_response_t;
+
 // Callback function type for client events
 typedef void (*golioth_client_event_cb_fn)(
         golioth_client_t client,
@@ -26,9 +36,17 @@ typedef void (*golioth_client_event_cb_fn)(
 // Callback function type for all asynchronous get/observe requests
 typedef void (*golioth_get_cb_fn)(
         golioth_client_t client,
+        const golioth_response_t* response,
         const char* path,
         const uint8_t* payload,
         size_t payload_size,
+        void* arg);
+
+// Callback function type for all asynchronous set/delete requests
+typedef void (*golioth_set_cb_fn)(
+        golioth_client_t client,
+        const golioth_response_t* response,
+        const char* path,
         void* arg);
 
 golioth_client_t golioth_client_create(const char* psk_id, const char* psk);
