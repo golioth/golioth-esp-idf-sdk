@@ -28,6 +28,12 @@ static SemaphoreHandle_t _disconnected_sem;
 static golioth_client_t _client;
 static uint32_t _initial_free_heap;
 
+// Note: Don't put TEST_ASSERT_* statements in client callback functions, as this
+// will cause a stack overflow in the client task is any of the assertions fail.
+//
+// I'm not sure exactly why this happens, but I suspect it's related to
+// Unity's UNITY_FAIL_AND_BAIL macro that gets called on failing assertions.
+
 static void on_client_event(golioth_client_t client, golioth_client_event_t event, void* arg) {
     bool is_connected = (event == GOLIOTH_CLIENT_EVENT_CONNECTED);
     ESP_LOGI(TAG, "Golioth %s", is_connected ? "connected" : "disconnected");
@@ -58,13 +64,6 @@ static void test_golioth_client_create(void) {
 
 static void test_connects_to_golioth(void) {
     TEST_ASSERT_NOT_NULL(_client);
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_start(_client));
-    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
-}
-
-static void test_client_stop_and_start(void) {
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_stop(_client));
-    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_disconnected_sem, 3000 / portTICK_PERIOD_MS));
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_start(_client));
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
 }
@@ -102,6 +101,7 @@ static void test_lightdb_set_get_sync(void) {
 }
 
 static bool _on_test_int2_called = false;
+static int32_t _test_int2_value = 0;
 static void on_test_int2(
         golioth_client_t client,
         const golioth_response_t* response,
@@ -109,12 +109,10 @@ static void on_test_int2(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    golioth_response_t* arg_response = (golioth_response_t*)arg;
+    *arg_response = *response;
     _on_test_int2_called = true;
-    int32_t expected_value = (int32_t)arg;
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, response->status);
-    TEST_ASSERT_EQUAL(2, response->class);
-    TEST_ASSERT_EQUAL(5, response->code);
-    TEST_ASSERT_EQUAL(expected_value, golioth_payload_as_int(payload, payload_size));
+    _test_int2_value = golioth_payload_as_int(payload, payload_size);
 }
 
 static void test_lightdb_set_get_async(void) {
@@ -125,12 +123,17 @@ static void test_lightdb_set_get_async(void) {
     delay_ms(500);
 
     _on_test_int2_called = false;
+    golioth_response_t async_response = {};
     TEST_ASSERT_EQUAL(
             GOLIOTH_OK,
-            golioth_lightdb_get_async(_client, "test_int2", on_test_int2, (void*)randint));
-    // Value is verified in the callback
+            golioth_lightdb_get_async(_client, "test_int2", on_test_int2, &async_response));
+
     delay_ms(500);
     TEST_ASSERT_TRUE(_on_test_int2_called);
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, async_response.status);
+    TEST_ASSERT_EQUAL(2, async_response.class);
+    TEST_ASSERT_EQUAL(5, async_response.code);
+    TEST_ASSERT_EQUAL(randint, _test_int2_value);
 }
 
 static bool _on_test_timeout_called = false;
@@ -141,26 +144,54 @@ static void on_test_timeout(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    golioth_response_t* arg_response = (golioth_response_t*)arg;
+    *arg_response = *response;
     _on_test_timeout_called = true;
-    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, response->status);
-    TEST_ASSERT_EQUAL(NULL, payload);
-    TEST_ASSERT_EQUAL(0, payload_size);
 }
 
 static void test_request_timeout_if_wifi_disconnected(void) {
-    // Send async get request, then immediately disconnect wifi.
-    // Verify request callback gets called with GOLIOTH_ERR_TIMEOUT.
-    _on_test_timeout_called = false;
-    TEST_ASSERT_EQUAL(
-            GOLIOTH_OK, golioth_lightdb_get_async(_client, "test_timeout", on_test_timeout, NULL));
+    // Stop wifi then send async and sync get requests.
+    // Verify both fail with GOLIOTH_ERR_TIMEOUT.
+    // The async and sync requests will each take about 10 seconds to time out.
+
     TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_stop());
-    delay_ms(1000 * (CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_S + 1));
+
+    _on_test_timeout_called = false;
+    golioth_response_t async_response = {};
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_OK,
+            golioth_lightdb_get_async(_client, "test_int", on_test_timeout, &async_response));
+
+    int32_t dummy = 0;
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_get_int_sync(_client, "test_int", &dummy));
+
     TEST_ASSERT_TRUE(_on_test_timeout_called);
+    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, async_response.status);
 
     // Restart wifi for next test
     TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_start());
     TEST_ASSERT_TRUE(wifi_wait_for_connected_with_timeout(10));
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
+}
+
+static void test_lightdb_error_if_path_not_found(void) {
+    // Issue a sync GET request to an invalid path.
+    // Verify a non-success response is received.
+
+    // The server actually gives us a 2.05 response (success) for non-existant paths.
+    // In this case, our SDK detects the payload is empty and returns GOLIOTH_ERR_NULL.
+    int32_t dummy = 0;
+    TEST_ASSERT_EQUAL(GOLIOTH_ERR_NULL, golioth_lightdb_get_int_sync(_client, "not_found", &dummy));
+}
+
+static void test_client_task_stack_min_remaining(void) {
+    uint32_t stack_unused = golioth_client_task_stack_min_remaining(_client);
+    uint32_t stack_used = CONFIG_GOLIOTH_COAP_TASK_STACK_SIZE_BYTES - stack_unused;
+    ESP_LOGI(TAG, "Client task stack used = %u, unused = %u", stack_used, stack_unused);
+
+    // Verify at least 25% stack was not used
+    TEST_ASSERT_TRUE(stack_unused >= CONFIG_GOLIOTH_COAP_TASK_STACK_SIZE_BYTES / 4);
 }
 
 static int built_in_test(int argc, char** argv) {
@@ -173,12 +204,13 @@ static int built_in_test(int argc, char** argv) {
     }
     RUN_TEST(test_golioth_client_create);
     RUN_TEST(test_connects_to_golioth);
-    RUN_TEST(test_golioth_client_heap_usage);
-    RUN_TEST(test_client_stop_and_start);
-    RUN_TEST(test_request_dropped_if_client_not_running);
     RUN_TEST(test_lightdb_set_get_sync);
     RUN_TEST(test_lightdb_set_get_async);
+    RUN_TEST(test_request_dropped_if_client_not_running);
     RUN_TEST(test_request_timeout_if_wifi_disconnected);
+    RUN_TEST(test_lightdb_error_if_path_not_found);
+    RUN_TEST(test_golioth_client_heap_usage);
+    RUN_TEST(test_client_task_stack_min_remaining);
     UNITY_END();
 
     return 0;
