@@ -645,6 +645,31 @@ coap_io_loop_once(golioth_coap_client_t* client, coap_context_t* context, coap_s
 
     if (time_spent_waiting_ms >= timeout_ms) {
         ESP_LOGE(TAG, "Timeout: never got a response from the server");
+
+        // Call user's callback with GOLIOTH_ERR_TIMEOUT
+        golioth_response_t response = {};
+        response.status = GOLIOTH_ERR_TIMEOUT;
+        if (request_msg.type == GOLIOTH_COAP_REQUEST_GET && request_msg.get.callback) {
+            request_msg.get.callback(
+                    client, &response, request_msg.get.path, NULL, 0, request_msg.get.arg);
+        } else if (
+                request_msg.type == GOLIOTH_COAP_REQUEST_GET_BLOCK
+                && request_msg.get_block.callback) {
+            request_msg.get.callback(
+                    client,
+                    &response,
+                    request_msg.get_block.path,
+                    NULL,
+                    0,
+                    request_msg.get_block.arg);
+        } else if (request_msg.type == GOLIOTH_COAP_REQUEST_POST && request_msg.post.callback) {
+            request_msg.get.callback(
+                    client, &response, request_msg.post.path, NULL, 0, request_msg.post.arg);
+        } else if (request_msg.type == GOLIOTH_COAP_REQUEST_DELETE && request_msg.delete.callback) {
+            request_msg.get.callback(
+                    client, &response, request_msg.delete.path, NULL, 0, request_msg.delete.arg);
+        }
+
         if (client->event_callback && client->session_connected) {
             client->event_callback(
                     client, GOLIOTH_CLIENT_EVENT_DISCONNECTED, client->event_callback_arg);
