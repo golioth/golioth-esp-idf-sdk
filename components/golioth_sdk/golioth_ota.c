@@ -27,8 +27,9 @@ size_t golioth_ota_size_to_nblocks(size_t component_size) {
     return nblocks;
 }
 
-const golioth_ota_component_t*
-golioth_ota_find_component(const golioth_ota_manifest_t* manifest, const char* package) {
+const golioth_ota_component_t* golioth_ota_find_component(
+        const golioth_ota_manifest_t* manifest,
+        const char* package) {
     // Scan the manifest until we find the component with matching package.
     const golioth_ota_component_t* found = NULL;
     for (int i = 0; i < manifest->num_components; i++) {
@@ -42,8 +43,10 @@ golioth_ota_find_component(const golioth_ota_manifest_t* manifest, const char* p
     return found;
 }
 
-golioth_status_t
-golioth_ota_observe_manifest_async(golioth_client_t client, golioth_get_cb_fn callback, void* arg) {
+golioth_status_t golioth_ota_observe_manifest_async(
+        golioth_client_t client,
+        golioth_get_cb_fn callback,
+        void* arg) {
     return golioth_coap_client_observe_async(
             client, "", GOLIOTH_OTA_MANIFEST_PATH, COAP_MEDIATYPE_APPLICATION_JSON, callback, arg);
 }

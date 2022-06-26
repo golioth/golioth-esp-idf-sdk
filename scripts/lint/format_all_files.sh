@@ -7,5 +7,6 @@ find $REPO_ROOT/components -type f -name "*.c" -o -name "*.h" \
     | grep -v -E ".*third_party.*" \
     | xargs clang-format -i -style=file --verbose
 
-find $REPO_ROOT/example/main -type f -name "*.c" -o -name "*.h" \
+find $REPO_ROOT/examples/*/main -type f -name "*.c" -o -name "*.h" \
+    | grep -v -E ".*build.*" \
     | xargs clang-format -i -style=file --verbose

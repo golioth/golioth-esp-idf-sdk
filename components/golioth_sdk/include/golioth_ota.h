@@ -49,12 +49,15 @@ golioth_status_t golioth_ota_payload_as_manifest(
         golioth_ota_manifest_t* manifest);
 
 size_t golioth_ota_size_to_nblocks(size_t component_size);
-const golioth_ota_component_t*
-golioth_ota_find_component(const golioth_ota_manifest_t* manifest, const char* package);
+const golioth_ota_component_t* golioth_ota_find_component(
+        const golioth_ota_manifest_t* manifest,
+        const char* package);
 
 // Asynchronous
-golioth_status_t
-golioth_ota_observe_manifest_async(golioth_client_t client, golioth_get_cb_fn callback, void* arg);
+golioth_status_t golioth_ota_observe_manifest_async(
+        golioth_client_t client,
+        golioth_get_cb_fn callback,
+        void* arg);
 
 // Synchronous (wait for server response)
 golioth_status_t golioth_ota_get_block_sync(

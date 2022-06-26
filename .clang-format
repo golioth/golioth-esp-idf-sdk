@@ -65,6 +65,7 @@ AllowShortCaseLabelsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortIfStatementsOnASingleLine: false
 AllowShortLoopsOnASingleLine: false
+AlwaysBreakAfterDefinitionReturnType: None
 AlwaysBreakAfterReturnType: None
 AlwaysBreakBeforeMultilineStrings: true
 AlwaysBreakTemplateDeclarations: true
@@ -77,4 +78,7 @@ BreakBeforeTernaryOperators: true
 BreakConstructorInitializersBeforeComma: true
 BreakStringLiterals: false
 ConstructorInitializerAllOnOneLineOrOnePerLine: true
+
+# Prevent return type from being on a line of its own
+PenaltyReturnTypeOnItsOwnLine: 1000
 ...

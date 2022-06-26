@@ -97,8 +97,12 @@ static void IRAM_ATTR ws2812_rmt_adapter(
     *item_num = num;
 }
 
-static esp_err_t
-ws2812_set_pixel(led_strip_t* strip, uint32_t index, uint32_t red, uint32_t green, uint32_t blue) {
+static esp_err_t ws2812_set_pixel(
+        led_strip_t* strip,
+        uint32_t index,
+        uint32_t red,
+        uint32_t green,
+        uint32_t blue) {
     esp_err_t ret = ESP_OK;
     ws2812_t* ws2812 = __containerof(strip, ws2812_t, parent);
     STRIP_CHECK(
