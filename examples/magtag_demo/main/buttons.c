@@ -4,6 +4,7 @@
 #include "driver/gpio.h"
 #include "buttons.h"
 #include "board.h"
+#include "golioth_time.h"
 #include "time.h"
 #include "events.h"
 
@@ -14,11 +15,11 @@ static uint32_t _debounce_ms[4];
 static void IRAM_ATTR button_isr(void* arg) {
     uint32_t gpio_num = (uint32_t)arg;
     assert(gpio_num < 4);
-    if (_debounce_ms[gpio_num] > millis()) {
+    if (_debounce_ms[gpio_num] > golioth_time_millis()) {
         // Too soon, don't handle this edge
         return;
     }
-    _debounce_ms[gpio_num] = millis() + 100;
+    _debounce_ms[gpio_num] = golioth_time_millis() + 100;
 
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     xEventGroupSetBitsFromISR(_event_group, (1 << gpio_num), &xHigherPriorityTaskWoken);

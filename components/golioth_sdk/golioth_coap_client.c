@@ -10,11 +10,13 @@
 #include <sys/param.h>  // MIN
 #include <freertos/event_groups.h>
 #include <esp_log.h>
+#include <esp_timer.h>
 #include <coap3/coap.h>
 #include "golioth_client.h"
 #include "golioth_coap_client.h"
 #include "golioth_stats.h"
 #include "golioth_util.h"
+#include "golioth_time.h"
 #include "golioth_lightdb.h"
 
 #define TAG "golioth_coap_client"
@@ -24,6 +26,9 @@ golioth_stats_t g_golioth_stats;
 
 #define GOLIOTH_DEFAULT_PSK_ID "unknown"
 #define GOLIOTH_DEFAULT_PSK "unknown"
+
+// TODO - ageout (ignore requests and responses if past this time)
+// TODO - API timeout handling, set ageout in request
 
 // This is the struct hidden by the opaque type golioth_client_t
 // TODO - document these
@@ -162,6 +167,7 @@ static coap_response_t coap_response_handler(
                 req->get.callback(client, &response, req->get.path, data, data_len, req->get.arg);
             }
         } else if (req->type == GOLIOTH_COAP_REQUEST_GET_BLOCK) {
+            // TODO - debug log, print block index from pdu
             if (req->get_block.callback) {
                 req->get_block.callback(
                         client, &response, req->get_block.path, data, data_len, req->get_block.arg);
@@ -640,6 +646,8 @@ static golioth_status_t coap_io_loop_once(
             // in which case we will get here.
             //
             // Since we haven't received the response yet, just keep waiting.
+
+            // TODO - update based on real time, not time reported by libcoap
             time_spent_waiting_ms += num_ms;
         }
     }
@@ -915,7 +923,10 @@ bool golioth_client_is_connected(golioth_client_t client) {
     return c->session_connected;
 }
 
-golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_synchronous, int32_t timeout_s) {
+golioth_status_t golioth_coap_client_empty(
+        golioth_client_t client,
+        bool is_synchronous,
+        int32_t timeout_s) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
         return GOLIOTH_ERR_NULL;

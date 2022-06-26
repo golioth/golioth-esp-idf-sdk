@@ -77,6 +77,7 @@ typedef enum {
 
 typedef struct {
     golioth_coap_request_type_t type;
+    uint64_t ageout_ms;  // request and response ignored after this time
     union {
         golioth_coap_get_params_t get;
         golioth_coap_get_block_params_t get_block;
@@ -94,9 +95,10 @@ typedef struct {
     size_t token_len;
 } golioth_coap_observe_info_t;
 
-// TODO - add ageout to requests
-
-golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_synchronous, int32_t timeout_s);
+golioth_status_t golioth_coap_client_empty(
+        golioth_client_t client,
+        bool is_synchronous,
+        int32_t timeout_s);
 
 golioth_status_t golioth_coap_client_set(
         golioth_client_t client,

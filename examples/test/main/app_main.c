@@ -124,7 +124,7 @@ static void test_lightdb_set_get_async(void) {
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_async(_client, "test_int2", randint));
 
     // Wait a bit...there's currently no way to know when an async set has finished
-    delay_ms(500);
+    golioth_time_delay_ms(500);
 
     _on_test_int2_called = false;
     golioth_response_t async_response = {};
@@ -132,7 +132,7 @@ static void test_lightdb_set_get_async(void) {
             GOLIOTH_OK,
             golioth_lightdb_get_async(_client, "test_int2", on_test_int2, &async_response));
 
-    delay_ms(500);
+    golioth_time_delay_ms(500);
     TEST_ASSERT_TRUE(_on_test_int2_called);
     TEST_ASSERT_EQUAL(GOLIOTH_OK, async_response.status);
     TEST_ASSERT_EQUAL(2, async_response.class);
@@ -255,6 +255,6 @@ void app_main(void) {
     shell_start();
 
     while (1) {
-        delay_ms(100000);
+        golioth_time_delay_ms(100000);
     };
 }

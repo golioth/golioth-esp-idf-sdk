@@ -5,7 +5,6 @@ idf_component_register(
         "app_main.c"
         "../../common/wifi.c"
         "../../common/nvs.c"
-        "../../common/time.c"
         "../../common/shell.c"
         "../../common/fw_update.c"
     PRIV_REQUIRES
