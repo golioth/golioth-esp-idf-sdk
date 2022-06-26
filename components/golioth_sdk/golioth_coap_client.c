@@ -700,7 +700,7 @@ static void on_keepalive(TimerHandle_t timer) {
     if (c->is_running) {
         ESP_LOGD(TAG, "keepalive");
         c->keepalive_count++;
-        golioth_coap_client_empty(c, false);
+        golioth_coap_client_empty(c, false, 1);
     }
 }
 
@@ -750,7 +750,7 @@ static void golioth_coap_client_task(void* arg) {
         // This is done so we can determine quickly whether we are connected
         // to the cloud or not (libcoap does not tell us when it's connected
         // for some reason, so this is a workaround for that).
-        golioth_coap_client_empty(client, false);
+        golioth_coap_client_empty(client, false, 1);
 
         // If we are re-connecting and had prior observations, set
         // them up again now (tokens will be updated).
@@ -915,7 +915,7 @@ bool golioth_client_is_connected(golioth_client_t client) {
     return c->session_connected;
 }
 
-golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_synchronous) {
+golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_synchronous, int32_t timeout_s) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
         return GOLIOTH_ERR_NULL;
@@ -975,7 +975,8 @@ golioth_status_t golioth_coap_client_set(
         size_t payload_size,
         golioth_set_cb_fn callback,
         void* callback_arg,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
         return GOLIOTH_ERR_NULL;
@@ -1066,7 +1067,8 @@ golioth_status_t golioth_coap_client_delete(
         const char* path,
         golioth_set_cb_fn callback,
         void* callback_arg,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
         return GOLIOTH_ERR_NULL;
@@ -1128,7 +1130,8 @@ static golioth_status_t golioth_coap_client_get_internal(
         golioth_client_t client,
         golioth_coap_request_type_t type,
         void* request_params,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
         return GOLIOTH_ERR_NULL;
@@ -1191,7 +1194,8 @@ golioth_status_t golioth_coap_client_get(
         uint32_t content_type,
         golioth_get_cb_fn callback,
         void* arg,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s) {
     golioth_coap_get_params_t params = {
             .path_prefix = path_prefix,
             .content_type = content_type,
@@ -1200,7 +1204,7 @@ golioth_status_t golioth_coap_client_get(
     };
     strncpy(params.path, path, sizeof(params.path) - 1);
     return golioth_coap_client_get_internal(
-            client, GOLIOTH_COAP_REQUEST_GET, &params, is_synchronous);
+            client, GOLIOTH_COAP_REQUEST_GET, &params, is_synchronous, timeout_s);
 }
 
 golioth_status_t golioth_coap_client_get_block(
@@ -1212,7 +1216,8 @@ golioth_status_t golioth_coap_client_get_block(
         size_t block_size,
         golioth_get_cb_fn callback,
         void* arg,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s) {
     golioth_coap_get_block_params_t params = {
             .path_prefix = path_prefix,
             .content_type = content_type,
@@ -1223,7 +1228,7 @@ golioth_status_t golioth_coap_client_get_block(
     };
     strncpy(params.path, path, sizeof(params.path) - 1);
     return golioth_coap_client_get_internal(
-            client, GOLIOTH_COAP_REQUEST_GET_BLOCK, &params, is_synchronous);
+            client, GOLIOTH_COAP_REQUEST_GET_BLOCK, &params, is_synchronous, timeout_s);
 }
 
 golioth_status_t golioth_coap_client_observe_async(

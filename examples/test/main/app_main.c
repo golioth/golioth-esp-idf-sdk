@@ -93,10 +93,14 @@ static void test_request_dropped_if_client_not_running(void) {
 
 static void test_lightdb_set_get_sync(void) {
     int randint = rand();
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_sync(_client, "test_int", randint));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_OK,
+            golioth_lightdb_set_int_sync(_client, "test_int", randint, GOLIOTH_WAIT_FOREVER));
 
     int get_randint = 0;
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_get_int_sync(_client, "test_int", &get_randint));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_OK,
+            golioth_lightdb_get_int_sync(_client, "test_int", &get_randint, GOLIOTH_WAIT_FOREVER));
     TEST_ASSERT_EQUAL(randint, get_randint);
 }
 
@@ -152,7 +156,7 @@ static void on_test_timeout(
 static void test_request_timeout_if_wifi_disconnected(void) {
     // Stop wifi then send async and sync get requests.
     // Verify both fail with GOLIOTH_ERR_TIMEOUT.
-    // The async and sync requests will each take about 10 seconds to time out.
+    // The async request will take about 10 seconds to timeout.
 
     TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_stop());
 
@@ -164,7 +168,7 @@ static void test_request_timeout_if_wifi_disconnected(void) {
 
     int32_t dummy = 0;
     TEST_ASSERT_EQUAL(
-            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_get_int_sync(_client, "test_int", &dummy));
+            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_get_int_sync(_client, "test_int", &dummy, 2));
 
     TEST_ASSERT_TRUE(_on_test_timeout_called);
     TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, async_response.status);
@@ -182,7 +186,9 @@ static void test_lightdb_error_if_path_not_found(void) {
     // The server actually gives us a 2.05 response (success) for non-existant paths.
     // In this case, our SDK detects the payload is empty and returns GOLIOTH_ERR_NULL.
     int32_t dummy = 0;
-    TEST_ASSERT_EQUAL(GOLIOTH_ERR_NULL, golioth_lightdb_get_int_sync(_client, "not_found", &dummy));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_NULL,
+            golioth_lightdb_get_int_sync(_client, "not_found", &dummy, GOLIOTH_WAIT_FOREVER));
 }
 
 static void test_client_task_stack_min_remaining(void) {

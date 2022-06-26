@@ -66,11 +66,15 @@ golioth_status_t golioth_ota_get_block_sync(
         const char* version,
         size_t block_index,
         uint8_t* buf,  // must be at least GOLIOTH_OTA_BLOCKSIZE bytes
-        size_t* block_nbytes);
+        size_t* block_nbytes,
+        int32_t timeout_s);
 golioth_status_t golioth_ota_report_state_sync(
         golioth_client_t client,
         golioth_ota_state_t state,
         golioth_ota_reason_t reason,
         const char* package,
         const char* current_version,  // optional, can be NULL
-        const char* target_version);  // optional, can be NULL
+        const char* target_version,   // optional, can be NULL
+        int32_t timeout_s);
+
+// TODO - timeout params

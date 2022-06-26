@@ -94,7 +94,9 @@ typedef struct {
     size_t token_len;
 } golioth_coap_observe_info_t;
 
-golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_synchronous);
+// TODO - add ageout to requests
+
+golioth_status_t golioth_coap_client_empty(golioth_client_t client, bool is_synchronous, int32_t timeout_s);
 
 golioth_status_t golioth_coap_client_set(
         golioth_client_t client,
@@ -105,7 +107,8 @@ golioth_status_t golioth_coap_client_set(
         size_t payload_size,
         golioth_set_cb_fn callback,
         void* callback_arg,
-        bool is_synchronous);
+        bool is_synchronous,
+        int32_t timeout_s);
 
 golioth_status_t golioth_coap_client_delete(
         golioth_client_t client,
@@ -113,7 +116,8 @@ golioth_status_t golioth_coap_client_delete(
         const char* path,
         golioth_set_cb_fn callback,
         void* callback_arg,
-        bool is_synchronous);
+        bool is_synchronous,
+        int32_t timeout_s);
 
 golioth_status_t golioth_coap_client_get(
         golioth_client_t client,
@@ -122,7 +126,8 @@ golioth_status_t golioth_coap_client_get(
         uint32_t content_type,
         golioth_get_cb_fn callback,
         void* callback_arg,
-        bool is_synchronous);
+        bool is_synchronous,
+        int32_t timeout_s);
 
 golioth_status_t golioth_coap_client_get_block(
         golioth_client_t client,
@@ -133,7 +138,8 @@ golioth_status_t golioth_coap_client_get_block(
         size_t block_size,
         golioth_get_cb_fn callback,
         void* callback_arg,
-        bool is_synchronous);
+        bool is_synchronous,
+        int32_t timeout_s);
 
 golioth_status_t golioth_coap_client_observe_async(
         golioth_client_t client,

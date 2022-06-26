@@ -131,15 +131,21 @@ void app_main(void) {
 
     while (1) {
         // Synchronous API examples (blocks until server responds or times out)
-        golioth_log_info_sync(client, TAG, "sync log message");
+        golioth_log_info_sync(client, TAG, "sync log message", GOLIOTH_WAIT_FOREVER);
         int32_t read_iteration = 0;
-        if (GOLIOTH_OK == golioth_lightdb_get_int_sync(client, "iteration", &read_iteration)) {
+        if (GOLIOTH_OK
+            == golioth_lightdb_get_int_sync(
+                    client, "iteration", &read_iteration, GOLIOTH_WAIT_FOREVER)) {
             ESP_LOGI(TAG, "Sync read iteration = %d", read_iteration);
         }
         char read_string_value[16] = {};
         if (GOLIOTH_OK
             == golioth_lightdb_get_string_sync(
-                    client, "string_value", read_string_value, sizeof(read_string_value))) {
+                    client,
+                    "string_value",
+                    read_string_value,
+                    sizeof(read_string_value),
+                    GOLIOTH_WAIT_FOREVER)) {
             ESP_LOGI(TAG, "Sync read string_value = %s", read_string_value);
         }
 
@@ -155,7 +161,7 @@ void app_main(void) {
         golioth_lightdb_get_async(client, "example_json", on_example_json, NULL);
 
         // LightDB Stream
-        golioth_lightdb_stream_set_int_sync(client, "randint", rand());
+        golioth_lightdb_stream_set_int_sync(client, "randint", rand(), GOLIOTH_WAIT_FOREVER);
 
         iteration++;
         vTaskDelay(10000 / portTICK_PERIOD_MS);

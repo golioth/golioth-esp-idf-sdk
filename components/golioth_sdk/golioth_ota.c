@@ -57,7 +57,8 @@ golioth_status_t golioth_ota_report_state_sync(
         golioth_ota_reason_t reason,
         const char* package,
         const char* current_version,
-        const char* target_version) {
+        const char* target_version,
+        int32_t timeout_s) {
     char jsonbuf[128] = {};
     cJSON* json = cJSON_CreateObject();
     cJSON_AddNumberToObject(json, "state", state);
@@ -82,7 +83,8 @@ golioth_status_t golioth_ota_report_state_sync(
             strlen(jsonbuf),
             NULL,
             NULL,
-            true);
+            true,
+            timeout_s);
 }
 
 golioth_status_t golioth_ota_payload_as_manifest(
@@ -170,7 +172,8 @@ golioth_status_t golioth_ota_get_block_sync(
         const char* version,
         size_t block_index,
         uint8_t* buf,  // must be at least GOLIOTH_OTA_BLOCKSIZE bytes
-        size_t* block_nbytes) {
+        size_t* block_nbytes,
+        int32_t timeout_s) {
     char path[CONFIG_GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN + CONFIG_GOLIOTH_OTA_MAX_VERSION_LEN + 2] =
             {};
     snprintf(path, sizeof(path), "%s@%s", package, version);
@@ -189,6 +192,7 @@ golioth_status_t golioth_ota_get_block_sync(
             GOLIOTH_OTA_BLOCKSIZE,
             on_block_rcvd,
             &out_params,
-            true);
+            true,
+            timeout_s);
     return status;
 }
