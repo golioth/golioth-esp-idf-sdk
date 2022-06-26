@@ -423,8 +423,9 @@ static void golioth_coap_post(const golioth_coap_post_params_t* params, coap_ses
     coap_send(session, request);
 }
 
-static void
-golioth_coap_delete(const golioth_coap_delete_params_t* params, coap_session_t* session) {
+static void golioth_coap_delete(
+        const golioth_coap_delete_params_t* params,
+        coap_session_t* session) {
     coap_pdu_t* request = coap_new_pdu(COAP_MESSAGE_CON, COAP_REQUEST_DELETE, session);
     if (!request) {
         ESP_LOGE(TAG, "coap_new_pdu() delete failed");
@@ -436,8 +437,9 @@ golioth_coap_delete(const golioth_coap_delete_params_t* params, coap_session_t* 
     coap_send(session, request);
 }
 
-static void
-add_observation(golioth_coap_client_t* client, const golioth_coap_observe_params_t* params) {
+static void add_observation(
+        golioth_coap_client_t* client,
+        const golioth_coap_observe_params_t* params) {
     // scan for available (not used) observation slot
     golioth_coap_observe_info_t* obs_info = NULL;
     bool found_slot = false;
@@ -517,8 +519,10 @@ static golioth_status_t create_context(golioth_coap_client_t* client, coap_conte
     return GOLIOTH_OK;
 }
 
-static golioth_status_t
-create_session(golioth_coap_client_t* client, coap_context_t* context, coap_session_t** session) {
+static golioth_status_t create_session(
+        golioth_coap_client_t* client,
+        coap_context_t* context,
+        coap_session_t** session) {
     // Split URI for host
     coap_uri_t host_uri = {};
     int uri_status = coap_split_uri(
@@ -554,8 +558,10 @@ create_session(golioth_coap_client_t* client, coap_context_t* context, coap_sess
     return GOLIOTH_OK;
 }
 
-static golioth_status_t
-coap_io_loop_once(golioth_coap_client_t* client, coap_context_t* context, coap_session_t* session) {
+static golioth_status_t coap_io_loop_once(
+        golioth_coap_client_t* client,
+        coap_context_t* context,
+        coap_session_t* session) {
     golioth_coap_request_msg_t request_msg = {};
 
     // Wait for request message, with timeout

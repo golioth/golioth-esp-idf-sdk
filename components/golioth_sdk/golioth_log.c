@@ -52,42 +52,58 @@ static golioth_status_t golioth_log_internal(
             is_synchronous);
 }
 
-golioth_status_t
-golioth_log_error_async(golioth_client_t client, const char* tag, const char* log_message) {
+golioth_status_t golioth_log_error_async(
+        golioth_client_t client,
+        const char* tag,
+        const char* log_message) {
     return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_ERROR, tag, log_message, false);
 }
 
-golioth_status_t
-golioth_log_warn_async(golioth_client_t client, const char* tag, const char* log_message) {
+golioth_status_t golioth_log_warn_async(
+        golioth_client_t client,
+        const char* tag,
+        const char* log_message) {
     return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_WARN, tag, log_message, false);
 }
 
-golioth_status_t
-golioth_log_info_async(golioth_client_t client, const char* tag, const char* log_message) {
+golioth_status_t golioth_log_info_async(
+        golioth_client_t client,
+        const char* tag,
+        const char* log_message) {
     return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_INFO, tag, log_message, false);
 }
 
-golioth_status_t
-golioth_log_debug_async(golioth_client_t client, const char* tag, const char* log_message) {
+golioth_status_t golioth_log_debug_async(
+        golioth_client_t client,
+        const char* tag,
+        const char* log_message) {
     return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_DEBUG, tag, log_message, false);
 }
 
-golioth_status_t
-golioth_log_error_sync(golioth_client_t client, const char* tag, const char* log_message) {
+golioth_status_t golioth_log_error_sync(
+        golioth_client_t client,
+        const char* tag,
+        const char* log_message) {
     return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_ERROR, tag, log_message, true);
 }
 
-golioth_status_t
-golioth_log_warn_sync(golioth_client_t client, const char* tag, const char* log_message) {
+golioth_status_t golioth_log_warn_sync(
+        golioth_client_t client,
+        const char* tag,
+        const char* log_message) {
     return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_WARN, tag, log_message, true);
 }
 
-golioth_status_t
-golioth_log_info_sync(golioth_client_t client, const char* tag, const char* log_message) {
+golioth_status_t golioth_log_info_sync(
+        golioth_client_t client,
+        const char* tag,
+        const char* log_message) {
     return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_INFO, tag, log_message, true);
 }
 
-golioth_status_t
-golioth_log_debug_sync(golioth_client_t client, const char* tag, const char* log_message) {
+golioth_status_t golioth_log_debug_sync(
+        golioth_client_t client,
+        const char* tag,
+        const char* log_message) {
     return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_DEBUG, tag, log_message, true);
 }
