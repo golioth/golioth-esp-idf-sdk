@@ -747,9 +747,9 @@ static golioth_status_t coap_io_loop_once(
 
 static void on_keepalive(TimerHandle_t timer) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)pvTimerGetTimerID(timer);
-    if (c->is_running) {
+    if (c->is_running && golioth_client_num_items_in_request_queue(c) == 0) {
         ESP_LOGD(TAG, "keepalive");
-        golioth_coap_client_empty(c, false, 1);
+        golioth_coap_client_empty(c, false, GOLIOTH_WAIT_FOREVER);
     }
 }
 
@@ -800,7 +800,9 @@ static void golioth_coap_client_task(void* arg) {
         // This is done so we can determine quickly whether we are connected
         // to the cloud or not (libcoap does not tell us when it's connected
         // for some reason, so this is a workaround for that).
-        golioth_coap_client_empty(client, false, 1);
+        if (golioth_client_num_items_in_request_queue(client) == 0) {
+            golioth_coap_client_empty(client, false, GOLIOTH_WAIT_FOREVER);
+        }
 
         // If we are re-connecting and had prior observations, set
         // them up again now (tokens will be updated).
@@ -1373,4 +1375,12 @@ void golioth_client_set_packet_loss_percent(uint8_t percent) {
     snprintf(buf, sizeof(buf), "%u%%", percent);
     ESP_LOGI(TAG, "Setting packet loss to %s", buf);
     coap_debug_set_packet_loss(buf);
+}
+
+uint32_t golioth_client_num_items_in_request_queue(golioth_client_t client) {
+    golioth_coap_client_t* c = (golioth_coap_client_t*)client;
+    if (!c) {
+        return 0;
+    }
+    return uxQueueMessagesWaiting(c->request_queue);
 }
