@@ -17,9 +17,6 @@ typedef enum {
     GOLIOTH_CLIENT_EVENT_DISCONNECTED,
 } golioth_client_event_t;
 
-// For Golioth APIs that take a timeout parameter
-#define GOLIOTH_WAIT_FOREVER -1
-
 typedef struct {
     // One of:
     //      GOLIOTH_ERR_TIMEOUT (no response received from server)
@@ -66,4 +63,6 @@ void golioth_client_register_event_callback(
         golioth_client_event_cb_fn callback,
         void* arg);
 
+// Testing and instrumentation
 uint32_t golioth_client_task_stack_min_remaining(golioth_client_t client);
+void golioth_client_set_packet_loss_percent(uint8_t percent);  // 0 to 100

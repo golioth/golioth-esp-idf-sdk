@@ -27,9 +27,6 @@ golioth_stats_t g_golioth_stats;
 #define GOLIOTH_DEFAULT_PSK_ID "unknown"
 #define GOLIOTH_DEFAULT_PSK "unknown"
 
-// TODO - ageout (ignore requests and responses if past this time)
-// TODO - API timeout handling, set ageout in request
-
 // This is the struct hidden by the opaque type golioth_client_t
 // TODO - document these
 typedef struct {
@@ -38,7 +35,6 @@ typedef struct {
     SemaphoreHandle_t run_sem;
     TimerHandle_t keepalive_timer;
     bool is_running;
-    int keepalive_count;
     bool end_session;
     bool session_connected;
     uint8_t token[8];  // token of the pending request
@@ -56,6 +52,9 @@ typedef struct {
     size_t block_token_len;
     golioth_client_event_cb_fn event_callback;
     void* event_callback_arg;
+    /// Time (since boot) in milliseconds when request is no longer valid.
+    /// This is checked when reqeusts are pulled out of the queue and when responses are received.
+    uint64_t ageout_ms;
 } golioth_coap_client_t;
 
 static bool token_matches_request(const coap_pdu_t* received, golioth_coap_client_t* client) {
@@ -162,15 +161,25 @@ static coap_response_t coap_response_handler(
             }
         }
 
-        if (req->type == GOLIOTH_COAP_REQUEST_GET) {
-            if (req->get.callback) {
-                req->get.callback(client, &response, req->get.path, data, data_len, req->get.arg);
-            }
-        } else if (req->type == GOLIOTH_COAP_REQUEST_GET_BLOCK) {
-            // TODO - debug log, print block index from pdu
-            if (req->get_block.callback) {
-                req->get_block.callback(
-                        client, &response, req->get_block.path, data, data_len, req->get_block.arg);
+        if (golioth_time_millis() > req->ageout_ms) {
+            ESP_LOGW(TAG, "Ignoring response from old request, type %d", req->type);
+        } else {
+            if (req->type == GOLIOTH_COAP_REQUEST_GET) {
+                if (req->get.callback) {
+                    req->get.callback(
+                            client, &response, req->get.path, data, data_len, req->get.arg);
+                }
+            } else if (req->type == GOLIOTH_COAP_REQUEST_GET_BLOCK) {
+                // TODO - debug log, print block index from pdu
+                if (req->get_block.callback) {
+                    req->get_block.callback(
+                            client,
+                            &response,
+                            req->get_block.path,
+                            data,
+                            data_len,
+                            req->get_block.arg);
+                }
             }
         }
     }
@@ -583,6 +592,18 @@ static golioth_status_t coap_io_loop_once(
         return GOLIOTH_OK;
     }
 
+    // Make sure the request isn't too old
+    if (golioth_time_millis() > request_msg.ageout_ms) {
+        ESP_LOGW(TAG, "Ignoring request that has aged out, type %d", request_msg.type);
+        if (request_msg.type == GOLIOTH_COAP_REQUEST_POST && request_msg.post.payload_size > 0) {
+            free(request_msg.post.payload);
+        }
+        if (request_msg.request_complete_sem) {
+            xSemaphoreGive(request_msg.request_complete_sem);
+        }
+        return GOLIOTH_OK;
+    }
+
     // Handle message and send request to server
     bool request_is_valid = true;
     switch (request_msg.type) {
@@ -630,6 +651,12 @@ static golioth_status_t coap_io_loop_once(
     client->got_coap_response = false;
     int32_t time_spent_waiting_ms = 0;
     int32_t timeout_ms = CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_S * 1000;
+
+    if (request_msg.ageout_ms != GOLIOTH_WAIT_FOREVER) {
+        int32_t time_till_ageout_ms = (int32_t)(request_msg.ageout_ms - golioth_time_millis());
+        timeout_ms = min(timeout_ms, time_till_ageout_ms);
+    }
+
     bool io_error = false;
     while (time_spent_waiting_ms < timeout_ms) {
         int32_t remaining_ms = timeout_ms - time_spent_waiting_ms;
@@ -707,7 +734,6 @@ static void on_keepalive(TimerHandle_t timer) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)pvTimerGetTimerID(timer);
     if (c->is_running) {
         ESP_LOGD(TAG, "keepalive");
-        c->keepalive_count++;
         golioth_coap_client_empty(c, false, 1);
     }
 }
@@ -725,8 +751,12 @@ golioth_status_t golioth_client_is_running(golioth_client_t client) {
 static void golioth_coap_client_task(void* arg) {
     golioth_coap_client_t* client = (golioth_coap_client_t*)arg;
 
+    coap_context_t* coap_context = NULL;
+    if (create_context(client, &coap_context) != GOLIOTH_OK) {
+        goto exit_task;
+    }
+
     while (1) {
-        coap_context_t* coap_context = NULL;
         coap_session_t* coap_session = NULL;
 
         client->end_session = false;
@@ -739,9 +769,6 @@ static void golioth_coap_client_task(void* arg) {
         ESP_LOGD(TAG, "Received \"run\" signal");
         client->is_running = true;
 
-        if (create_context(client, &coap_context) != GOLIOTH_OK) {
-            goto cleanup;
-        }
         if (create_session(client, coap_context, &coap_session) != GOLIOTH_OK) {
             goto cleanup;
         }
@@ -785,14 +812,16 @@ static void golioth_coap_client_task(void* arg) {
         if (coap_session) {
             coap_session_release(coap_session);
         }
-        if (coap_context) {
-            coap_free_context(coap_context);
-        }
-        coap_cleanup();
 
-        // Small delay before start a new session
+        // Small delay before starting a new session
         vTaskDelay(1000 / portTICK_PERIOD_MS);
     }
+
+exit_task:
+    if (coap_context) {
+        coap_free_context(coap_context);
+    }
+    coap_cleanup();
     vTaskDelete(NULL);
 }
 
@@ -935,7 +964,7 @@ golioth_status_t golioth_coap_client_empty(
     golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
 
-    if (!c->is_running || c->end_session) {
+    if (!c->is_running) {
         ESP_LOGW(TAG, "Client not running, dropping request");
         return GOLIOTH_ERR_INVALID_STATE;
     }
@@ -949,9 +978,15 @@ golioth_status_t golioth_coap_client_empty(
         }
     }
 
+    uint64_t ageout_ms = GOLIOTH_WAIT_FOREVER;
+    if (timeout_s != GOLIOTH_WAIT_FOREVER) {
+        ageout_ms = golioth_time_millis() + (1000 * timeout_s);
+    }
+
     golioth_coap_request_msg_t request_msg = {
             .type = GOLIOTH_COAP_REQUEST_EMPTY,
             .request_complete_sem = request_complete_sem,
+            .ageout_ms = ageout_ms,
     };
 
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
@@ -997,7 +1032,7 @@ golioth_status_t golioth_coap_client_set(
     SemaphoreHandle_t request_complete_sem = NULL;
     uint8_t* request_payload = NULL;
 
-    if (!c->is_running || c->end_session) {
+    if (!c->is_running) {
         ESP_LOGW(TAG, "Client not running, dropping request for path %s", path);
         return GOLIOTH_ERR_INVALID_STATE;
     }
@@ -1027,6 +1062,11 @@ golioth_status_t golioth_coap_client_set(
         }
     }
 
+    uint64_t ageout_ms = GOLIOTH_WAIT_FOREVER;
+    if (timeout_s != GOLIOTH_WAIT_FOREVER) {
+        ageout_ms = golioth_time_millis() + (1000 * timeout_s);
+    }
+
     golioth_coap_request_msg_t request_msg = {
             .type = GOLIOTH_COAP_REQUEST_POST,
             .post =
@@ -1038,6 +1078,7 @@ golioth_status_t golioth_coap_client_set(
                             .callback = callback,
                             .arg = callback_arg,
                     },
+            .ageout_ms = ageout_ms,
             .request_complete_sem = request_complete_sem,
     };
     strncpy(request_msg.post.path, path, sizeof(request_msg.post.path) - 1);
@@ -1045,6 +1086,10 @@ golioth_status_t golioth_coap_client_set(
     BaseType_t sent = xQueueSend(c->request_queue, &request_msg, 0);
     if (!sent) {
         ESP_LOGW(TAG, "Failed to enqueue request, queue full");
+        if (payload_size > 0) {
+            free(request_payload);
+            g_golioth_stats.total_freed_bytes += payload_size;
+        }
         ret = GOLIOTH_ERR_QUEUE_FULL;
         goto cleanup;
     }
@@ -1061,13 +1106,6 @@ golioth_status_t golioth_coap_client_set(
 cleanup:
     if (request_complete_sem) {
         vSemaphoreDelete(request_complete_sem);
-    }
-    if (ret != GOLIOTH_OK) {
-        // Failed to enqueue, free the payload copy
-        if (payload_size > 0) {
-            free(request_payload);
-            g_golioth_stats.total_freed_bytes += payload_size;
-        }
     }
     return ret;
 }
@@ -1088,7 +1126,7 @@ golioth_status_t golioth_coap_client_delete(
     golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
 
-    if (!c->is_running || c->end_session) {
+    if (!c->is_running) {
         ESP_LOGW(TAG, "Client not running, dropping request for path %s", path);
         return GOLIOTH_ERR_INVALID_STATE;
     }
@@ -1102,6 +1140,11 @@ golioth_status_t golioth_coap_client_delete(
         }
     }
 
+    uint64_t ageout_ms = GOLIOTH_WAIT_FOREVER;
+    if (timeout_s != GOLIOTH_WAIT_FOREVER) {
+        ageout_ms = golioth_time_millis() + (1000 * timeout_s);
+    }
+
     golioth_coap_request_msg_t request_msg = {
             .type = GOLIOTH_COAP_REQUEST_DELETE,
             .delete =
@@ -1110,6 +1153,7 @@ golioth_status_t golioth_coap_client_delete(
                             .callback = callback,
                             .arg = callback_arg,
                     },
+            .ageout_ms = ageout_ms,
             .request_complete_sem = request_complete_sem,
     };
     strncpy(request_msg.delete.path, path, sizeof(request_msg.delete.path) - 1);
@@ -1151,7 +1195,7 @@ static golioth_status_t golioth_coap_client_get_internal(
     golioth_status_t ret = GOLIOTH_OK;
     SemaphoreHandle_t request_complete_sem = NULL;
 
-    if (!c->is_running || c->end_session) {
+    if (!c->is_running) {
         ESP_LOGW(TAG, "Client not running, dropping get request");
         return GOLIOTH_ERR_INVALID_STATE;
     }
@@ -1165,9 +1209,15 @@ static golioth_status_t golioth_coap_client_get_internal(
         }
     }
 
+    uint64_t ageout_ms = GOLIOTH_WAIT_FOREVER;
+    if (timeout_s != GOLIOTH_WAIT_FOREVER) {
+        ageout_ms = golioth_time_millis() + (1000 * timeout_s);
+    }
+
     golioth_coap_request_msg_t request_msg = {};
     request_msg.type = type;
     request_msg.request_complete_sem = request_complete_sem;
+    request_msg.ageout_ms = ageout_ms;
     if (type == GOLIOTH_COAP_REQUEST_GET_BLOCK) {
         request_msg.get_block = *(golioth_coap_get_block_params_t*)request_params;
     } else {
@@ -1254,13 +1304,14 @@ golioth_status_t golioth_coap_client_observe_async(
         return GOLIOTH_ERR_NULL;
     }
 
-    if (!c->is_running || c->end_session) {
+    if (!c->is_running) {
         ESP_LOGW(TAG, "Client not running, dropping request for path %s", path);
         return GOLIOTH_ERR_INVALID_STATE;
     }
 
     golioth_coap_request_msg_t request_msg = {
             .type = GOLIOTH_COAP_REQUEST_OBSERVE,
+            .ageout_ms = GOLIOTH_WAIT_FOREVER,
             .observe =
                     {
                             .path_prefix = path_prefix,
@@ -1298,4 +1349,15 @@ uint32_t golioth_client_task_stack_min_remaining(golioth_client_t client) {
         return 0;
     }
     return uxTaskGetStackHighWaterMark(c->coap_task_handle);
+}
+
+void golioth_client_set_packet_loss_percent(uint8_t percent) {
+    if (percent > 100) {
+        ESP_LOGE(TAG, "Invalid percent %u, must be 0 to 100", percent);
+        return;
+    }
+    static char buf[16] = {};
+    snprintf(buf, sizeof(buf), "%u%%", percent);
+    ESP_LOGI(TAG, "Setting packet loss to %s", buf);
+    coap_debug_set_packet_loss(buf);
 }

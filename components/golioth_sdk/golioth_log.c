@@ -7,6 +7,7 @@
 #include <cJSON.h>
 #include "golioth_coap_client.h"
 #include "golioth_log.h"
+#include "golioth_time.h"
 
 #define TAG "golioth_log"
 

@@ -77,7 +77,10 @@ typedef enum {
 
 typedef struct {
     golioth_coap_request_type_t type;
-    uint64_t ageout_ms;  // request and response ignored after this time
+    /// Time (since boot) in milliseconds when request is no longer valid.
+    /// This is checked when reqeusts are pulled out of the queue and when responses are received.
+    /// Primarily intended to be used for synchronous requests, to avoid blocking forever.
+    uint64_t ageout_ms;
     union {
         golioth_coap_get_params_t get;
         golioth_coap_get_block_params_t get_block;

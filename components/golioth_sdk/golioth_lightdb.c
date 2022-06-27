@@ -8,6 +8,7 @@
 #include "golioth_lightdb.h"
 #include "golioth_stats.h"
 #include "golioth_util.h"
+#include "golioth_time.h"
 
 #define TAG "golioth_lightdb"
 
