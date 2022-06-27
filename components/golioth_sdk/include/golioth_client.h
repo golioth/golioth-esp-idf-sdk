@@ -65,4 +65,5 @@ void golioth_client_register_event_callback(
 
 // Testing and instrumentation
 uint32_t golioth_client_task_stack_min_remaining(golioth_client_t client);
+uint32_t golioth_client_num_items_in_request_queue(golioth_client_t client);
 void golioth_client_set_packet_loss_percent(uint8_t percent);  // 0 to 100
