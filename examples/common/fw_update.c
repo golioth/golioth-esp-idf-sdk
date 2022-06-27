@@ -130,7 +130,7 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
     for (size_t i = 0; i < nblocks; i++) {
         size_t block_nbytes = 0;
 
-        printf("\rfw_update: Getting block index %d (%d/%d)", i, i + 1, nblocks);
+        ESP_LOGI(TAG, "Getting block index %d (%d/%d)", i, i + 1, nblocks);
 
         golioth_status_t status = golioth_ota_get_block_sync(
                 _client,
