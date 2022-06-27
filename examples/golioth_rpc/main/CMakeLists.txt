@@ -1,0 +1,17 @@
+idf_component_register(
+    INCLUDE_DIRS
+        "../../common"
+    SRCS
+        "app_main.c"
+        "../../common/shell.c"
+        "../../common/wifi.c"
+        "../../common/fw_update.c"
+        "../../common/nvs.c"
+    PRIV_REQUIRES
+        "golioth_sdk"
+        "console"
+        "spi_flash"
+        "nvs_flash"
+        "json"
+        "app_update"
+)

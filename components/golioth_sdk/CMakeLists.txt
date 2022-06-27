@@ -11,6 +11,7 @@ idf_component_register(
         "golioth_coap_client.c"
         "golioth_log.c"
         "golioth_lightdb.c"
+        "golioth_rpc.c"
         "golioth_ota.c"
 )
 list(APPEND EXTRA_C_FLAGS_LIST
