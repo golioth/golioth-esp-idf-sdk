@@ -8,7 +8,6 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
-#include "esp_wifi.h"
 #include "esp_log.h"
 #include "unity.h"
 #include "nvs.h"
@@ -69,15 +68,24 @@ static void test_connects_to_golioth(void) {
 }
 
 static void test_golioth_client_heap_usage(void) {
-    uint32_t post_connect_free_heap = esp_get_free_heap_size();
+    uint32_t post_connect_free_heap = esp_get_minimum_free_heap_size();
     int32_t golioth_heap_usage = _initial_free_heap - post_connect_free_heap;
-    ESP_LOGI(TAG, "golioth_heap_usage = %u", golioth_heap_usage);
+    ESP_LOGI(TAG, "Estimated heap usage by Golioth stack = %u", golioth_heap_usage);
     TEST_ASSERT_TRUE(golioth_heap_usage < 50000);
 }
 
 static void test_request_dropped_if_client_not_running(void) {
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_stop(_client));
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_disconnected_sem, 3000 / portTICK_PERIOD_MS));
+
+    // Wait another 2 s for client to be fully stopped
+    uint64_t timeout_ms = golioth_time_millis() + 2000;
+    while (golioth_time_millis() < timeout_ms) {
+        if (!golioth_client_is_running(_client)) {
+            break;
+        }
+        golioth_time_delay_ms(100);
+    }
 
     // Verify each request type returns proper state
     TEST_ASSERT_EQUAL(GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_set_int_async(_client, "a", 1));
@@ -93,10 +101,11 @@ static void test_request_dropped_if_client_not_running(void) {
 
 static void test_lightdb_set_get_sync(void) {
     int randint = rand();
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_sync(_client, "test_int", randint));
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_sync(_client, "test_int", randint, 3));
 
     int get_randint = 0;
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_get_int_sync(_client, "test_int", &get_randint));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_OK, golioth_lightdb_get_int_sync(_client, "test_int", &get_randint, 3));
     TEST_ASSERT_EQUAL(randint, get_randint);
 }
 
@@ -120,7 +129,7 @@ static void test_lightdb_set_get_async(void) {
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_async(_client, "test_int2", randint));
 
     // Wait a bit...there's currently no way to know when an async set has finished
-    delay_ms(500);
+    golioth_time_delay_ms(500);
 
     _on_test_int2_called = false;
     golioth_response_t async_response = {};
@@ -128,7 +137,7 @@ static void test_lightdb_set_get_async(void) {
             GOLIOTH_OK,
             golioth_lightdb_get_async(_client, "test_int2", on_test_int2, &async_response));
 
-    delay_ms(500);
+    golioth_time_delay_ms(500);
     TEST_ASSERT_TRUE(_on_test_int2_called);
     TEST_ASSERT_EQUAL(GOLIOTH_OK, async_response.status);
     TEST_ASSERT_EQUAL(2, async_response.class);
@@ -152,9 +161,9 @@ static void on_test_timeout(
 static void test_request_timeout_if_wifi_disconnected(void) {
     // Stop wifi then send async and sync get requests.
     // Verify both fail with GOLIOTH_ERR_TIMEOUT.
-    // The async and sync requests will each take about 10 seconds to time out.
+    // The requests will each take about 10 seconds to timeout.
 
-    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_stop());
+    golioth_client_set_packet_loss_percent(100);
 
     _on_test_timeout_called = false;
     golioth_response_t async_response = {};
@@ -164,13 +173,18 @@ static void test_request_timeout_if_wifi_disconnected(void) {
 
     int32_t dummy = 0;
     TEST_ASSERT_EQUAL(
-            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_get_int_sync(_client, "test_int", &dummy));
+            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_get_int_sync(_client, "test_int", &dummy, 25));
 
     TEST_ASSERT_TRUE(_on_test_timeout_called);
     TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, async_response.status);
 
+    // Test other types of _sync APIs to make sure they timeout appropriately
+    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, golioth_lightdb_set_int_sync(_client, "test_int", 4, 3));
+    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, golioth_lightdb_delete_sync(_client, "test_int", 3));
+
     // Restart wifi for next test
-    TEST_ASSERT_EQUAL(ESP_OK, esp_wifi_start());
+    golioth_client_set_packet_loss_percent(0);
+
     TEST_ASSERT_TRUE(wifi_wait_for_connected_with_timeout(10));
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
 }
@@ -182,7 +196,8 @@ static void test_lightdb_error_if_path_not_found(void) {
     // The server actually gives us a 2.05 response (success) for non-existant paths.
     // In this case, our SDK detects the payload is empty and returns GOLIOTH_ERR_NULL.
     int32_t dummy = 0;
-    TEST_ASSERT_EQUAL(GOLIOTH_ERR_NULL, golioth_lightdb_get_int_sync(_client, "not_found", &dummy));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_NULL, golioth_lightdb_get_int_sync(_client, "not_found", &dummy, 3));
 }
 
 static void test_client_task_stack_min_remaining(void) {
@@ -200,16 +215,16 @@ static int built_in_test(int argc, char** argv) {
     if (!_initial_free_heap) {
         // Snapshot of heap usage after connecting to WiFi. This is baseline/reference
         // which we compare against when gauging how much RAM the Golioth client uses.
-        _initial_free_heap = esp_get_free_heap_size();
+        _initial_free_heap = esp_get_minimum_free_heap_size();
     }
     RUN_TEST(test_golioth_client_create);
     RUN_TEST(test_connects_to_golioth);
     RUN_TEST(test_lightdb_set_get_sync);
     RUN_TEST(test_lightdb_set_get_async);
+    RUN_TEST(test_golioth_client_heap_usage);
     RUN_TEST(test_request_dropped_if_client_not_running);
     RUN_TEST(test_request_timeout_if_wifi_disconnected);
     RUN_TEST(test_lightdb_error_if_path_not_found);
-    RUN_TEST(test_golioth_client_heap_usage);
     RUN_TEST(test_client_task_stack_min_remaining);
     UNITY_END();
 
@@ -249,6 +264,6 @@ void app_main(void) {
     shell_start();
 
     while (1) {
-        delay_ms(100000);
+        golioth_time_delay_ms(100000);
     };
 }

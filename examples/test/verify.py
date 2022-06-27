@@ -115,7 +115,6 @@ def run_ota_test(ser):
     reset(ser)
     ser.write('start_ota\r\n'.encode())
     wait_for_str_in_line(ser, 'Manifest does not contain different firmware version')
-    return 0
 
 def main():
     if len(sys.argv) != 2:
@@ -132,7 +131,9 @@ def main():
 
     # Run built in tests on the device and check output
     num_test_failures = run_built_in_tests(ser)
-    num_test_failures += run_ota_test(ser)
+
+    if num_test_failures == 0:
+        run_ota_test(ser)
 
     if num_test_failures == 0:
         green_print('---------------------------')

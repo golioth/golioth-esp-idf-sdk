@@ -10,3 +10,4 @@
 #include "golioth_log.h"
 #include "golioth_lightdb.h"
 #include "golioth_ota.h"
+#include "golioth_time.h"

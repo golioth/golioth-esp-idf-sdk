@@ -12,6 +12,7 @@ idf_component_register(
         "golioth_log.c"
         "golioth_lightdb.c"
         "golioth_ota.c"
+        "golioth_time.c"
 )
 list(APPEND EXTRA_C_FLAGS_LIST
     -Werror

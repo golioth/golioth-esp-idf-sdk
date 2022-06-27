@@ -81,7 +81,8 @@ static void fw_update_cancel_rollback(void) {
             GOLIOTH_OTA_REASON_FIRMWARE_UPDATED_SUCCESSFULLY,
             "main",
             _current_version,
-            NULL);
+            NULL,
+            GOLIOTH_WAIT_FOREVER);
 }
 
 static bool fw_update_manifest_version_is_different(const golioth_ota_manifest_t* manifest) {
@@ -111,7 +112,8 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
             GOLIOTH_OTA_REASON_READY,
             "main",
             _current_version,
-            _main_component->version);
+            _main_component->version,
+            GOLIOTH_WAIT_FOREVER);
 
     _update_partition = esp_ota_get_next_update_partition(NULL);
     assert(_update_partition);
@@ -128,7 +130,7 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
     for (size_t i = 0; i < nblocks; i++) {
         size_t block_nbytes = 0;
 
-        printf("\rfw_update: Getting block index %d (%d/%d)", i, i + 1, nblocks);
+        ESP_LOGI(TAG, "Getting block index %d (%d/%d)", i, i + 1, nblocks);
 
         golioth_status_t status = golioth_ota_get_block_sync(
                 _client,
@@ -136,7 +138,8 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
                 _main_component->version,
                 i,
                 _ota_block_buffer,
-                &block_nbytes);
+                &block_nbytes,
+                GOLIOTH_WAIT_FOREVER);
         if (status != GOLIOTH_OK) {
             ESP_LOGE(TAG, "Failed to get block index %d (%s)", i, golioth_status_to_str(status));
             break;
@@ -180,7 +183,8 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
                 GOLIOTH_OTA_REASON_FIRMWARE_UPDATE_FAILED,
                 "main",
                 _current_version,
-                _main_component->version);
+                _main_component->version,
+                GOLIOTH_WAIT_FOREVER);
         esp_ota_abort(_update_handle);
         return GOLIOTH_ERR_FAIL;
     }
@@ -204,7 +208,8 @@ static golioth_status_t fw_update_validate(void) {
                 GOLIOTH_OTA_REASON_INTEGRITY_CHECK_FAILURE,
                 "main",
                 _current_version,
-                _main_component->version);
+                _main_component->version,
+                GOLIOTH_WAIT_FOREVER);
         return GOLIOTH_ERR_FAIL;
     }
 
@@ -215,7 +220,8 @@ static golioth_status_t fw_update_validate(void) {
             GOLIOTH_OTA_REASON_READY,
             "main",
             _current_version,
-            _main_component->version);
+            _main_component->version,
+            GOLIOTH_WAIT_FOREVER);
     return GOLIOTH_OK;
 }
 
@@ -229,7 +235,8 @@ static golioth_status_t fw_update_change_boot_image(void) {
             GOLIOTH_OTA_REASON_READY,
             "main",
             _current_version,
-            NULL);
+            NULL,
+            GOLIOTH_WAIT_FOREVER);
 
     ESP_LOGI(TAG, "Setting boot partition");
     esp_err_t err = esp_ota_set_boot_partition(_update_partition);
@@ -299,7 +306,8 @@ static void fw_update_task(void* arg) {
             GOLIOTH_OTA_REASON_READY,
             "main",
             _current_version,
-            NULL);
+            NULL,
+            GOLIOTH_WAIT_FOREVER);
 
     golioth_ota_observe_manifest_async(_client, on_ota_manifest, NULL);
 

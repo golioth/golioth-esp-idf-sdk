@@ -16,7 +16,6 @@ idf_component_register(
         "epaper/EPD_2in9d.c"
         "epaper/ImageData.c"
         "../../common/wifi.c"
-        "../../common/time.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "json"

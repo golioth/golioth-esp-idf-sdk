@@ -55,8 +55,8 @@
 #include "font5x8.h"
 #include "ImageData.h"
 #include "epaper_priv.h"
-#include "time.h"
 #include "board.h"
+#include "golioth_time.h"
 #include <stdbool.h>
 #include <esp_log.h>
 
@@ -98,19 +98,19 @@ parameter:
 ******************************************************************************/
 static void EPD_2IN9D_Reset(void) {
     DEV_Digital_Write(EPAPER_RESET, 1);
-    delay_ms(20);
+    golioth_time_delay_ms(20);
     DEV_Digital_Write(EPAPER_RESET, 0);
-    delay_ms(2);
+    golioth_time_delay_ms(2);
     DEV_Digital_Write(EPAPER_RESET, 1);
-    delay_ms(20);
+    golioth_time_delay_ms(20);
     DEV_Digital_Write(EPAPER_RESET, 0);
-    delay_ms(2);
+    golioth_time_delay_ms(2);
     DEV_Digital_Write(EPAPER_RESET, 1);
-    delay_ms(20);
+    golioth_time_delay_ms(20);
     DEV_Digital_Write(EPAPER_RESET, 0);
-    delay_ms(2);
+    golioth_time_delay_ms(2);
     DEV_Digital_Write(EPAPER_RESET, 1);
-    delay_ms(20);
+    golioth_time_delay_ms(20);
 }
 
 /******************************************************************************
@@ -147,9 +147,9 @@ void EPD_2IN9D_ReadBusy(void) {
         EPD_2IN9D_SendCommand(0x71);
         busy = DEV_Digital_Read(EPAPER_BUSY);
         busy = !(busy & 0x01);
-        delay_ms(20);
+        golioth_time_delay_ms(20);
     } while (busy);
-    delay_ms(20);
+    golioth_time_delay_ms(20);
 }
 
 /******************************************************************************
@@ -222,7 +222,7 @@ parameter:
 ******************************************************************************/
 static void EPD_2IN9D_TurnOnDisplay(void) {
     EPD_2IN9D_SendCommand(0x12);  // DISPLAY REFRESH
-    delay_ms(10);                 //!!!The delay here is necessary, 200uS at least!!!
+    golioth_time_delay_ms(10);    //!!!The delay here is necessary, 200uS at least!!!
 
     EPD_2IN9D_ReadBusy();
 }
