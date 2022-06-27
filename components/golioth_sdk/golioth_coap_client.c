@@ -151,10 +151,6 @@ static coap_response_t coap_response_handler(
         ESP_LOGD(TAG, "%d.%02d (unsolicited), len %zu", class, code, data_len);
     }
 
-    if (sent) {
-        coap_show_pdu(LOG_INFO, sent);
-    }
-
     if (token_matches_request(received, client)) {
         client->got_coap_response = true;
         client->response = response;
