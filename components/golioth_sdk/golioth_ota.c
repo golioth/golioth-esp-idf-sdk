@@ -32,7 +32,7 @@ const golioth_ota_component_t* golioth_ota_find_component(
         const char* package) {
     // Scan the manifest until we find the component with matching package.
     const golioth_ota_component_t* found = NULL;
-    for (int i = 0; i < manifest->num_components; i++) {
+    for (size_t i = 0; i < manifest->num_components; i++) {
         const golioth_ota_component_t* c = &manifest->components[i];
         bool matches = (0 == strcmp(c->package, package));
         if (matches) {

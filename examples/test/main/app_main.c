@@ -128,8 +128,9 @@ static void test_lightdb_set_get_async(void) {
     int randint = rand();
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_async(_client, "test_int2", randint));
 
-    // Wait a bit...there's currently no way to know when an async set has finished
-    golioth_time_delay_ms(500);
+    // Wait a bit...there's currently no way to know when an async set has finished, so wait
+    // 3 seconds, which should cover the maximum server response latency
+    golioth_time_delay_ms(3000);
 
     _on_test_int2_called = false;
     golioth_response_t async_response = {};
@@ -137,7 +138,13 @@ static void test_lightdb_set_get_async(void) {
             GOLIOTH_OK,
             golioth_lightdb_get_async(_client, "test_int2", on_test_int2, &async_response));
 
-    golioth_time_delay_ms(500);
+    uint64_t timeout_ms = golioth_time_millis() + 3000;
+    while (golioth_time_millis() < timeout_ms) {
+        if (_on_test_int2_called) {
+            break;
+        }
+        golioth_time_delay_ms(100);
+    }
     TEST_ASSERT_TRUE(_on_test_int2_called);
     TEST_ASSERT_EQUAL(GOLIOTH_OK, async_response.status);
     TEST_ASSERT_EQUAL(2, async_response.class);
@@ -158,12 +165,19 @@ static void on_test_timeout(
     _on_test_timeout_called = true;
 }
 
-static void test_request_timeout_if_wifi_disconnected(void) {
-    // Stop wifi then send async and sync get requests.
-    // Verify both fail with GOLIOTH_ERR_TIMEOUT.
-    // The requests will each take about 10 seconds to timeout.
-
+// This test takes about 30 seconds to complete
+static void test_request_timeout_if_packets_dropped(void) {
     golioth_client_set_packet_loss_percent(100);
+
+    int32_t dummy = 0;
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_get_int_sync(_client, "test_int", &dummy, 1));
+    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, golioth_lightdb_set_int_sync(_client, "test_int", 4, 1));
+
+    // TODO - remove surrounding asserts
+    assert(_client);
+    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, golioth_lightdb_delete_sync(_client, "test_int", 1));
+    assert(_client);
 
     _on_test_timeout_called = false;
     golioth_response_t async_response = {};
@@ -171,21 +185,29 @@ static void test_request_timeout_if_wifi_disconnected(void) {
             GOLIOTH_OK,
             golioth_lightdb_get_async(_client, "test_int", on_test_timeout, &async_response));
 
-    int32_t dummy = 0;
-    TEST_ASSERT_EQUAL(
-            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_get_int_sync(_client, "test_int", &dummy, 25));
+    // Wait up to 12 s for async response to time out
+    uint64_t timeout_ms = golioth_time_millis() + 12000;
+    while (golioth_time_millis() < timeout_ms) {
+        if (_on_test_timeout_called) {
+            break;
+        }
+        golioth_time_delay_ms(100);
+    }
 
     TEST_ASSERT_TRUE(_on_test_timeout_called);
     TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, async_response.status);
 
-    // Test other types of _sync APIs to make sure they timeout appropriately
-    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, golioth_lightdb_set_int_sync(_client, "test_int", 4, 3));
-    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, golioth_lightdb_delete_sync(_client, "test_int", 3));
+    // If a synchronous request is performed with infinite timeout specified,
+    // the request will still timeout after CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_S.
+    uint64_t now = golioth_time_millis();
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_TIMEOUT,
+            golioth_lightdb_delete_sync(_client, "test_int", GOLIOTH_WAIT_FOREVER));
+    TEST_ASSERT_TRUE(golioth_time_millis() - now > (1000 * CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_S));
 
-    // Restart wifi for next test
     golioth_client_set_packet_loss_percent(0);
 
-    TEST_ASSERT_TRUE(wifi_wait_for_connected_with_timeout(10));
+    // Wait for connected
     TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
 }
 
@@ -223,8 +245,8 @@ static int built_in_test(int argc, char** argv) {
     RUN_TEST(test_lightdb_set_get_async);
     RUN_TEST(test_golioth_client_heap_usage);
     RUN_TEST(test_request_dropped_if_client_not_running);
-    RUN_TEST(test_request_timeout_if_wifi_disconnected);
     RUN_TEST(test_lightdb_error_if_path_not_found);
+    RUN_TEST(test_request_timeout_if_packets_dropped);
     RUN_TEST(test_client_task_stack_min_remaining);
     UNITY_END();
 

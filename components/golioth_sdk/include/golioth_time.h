@@ -11,7 +11,7 @@
 #define GOLIOTH_WAIT_FOREVER -1
 
 // Time since boot
-uint64_t golioth_time_micros();
-uint64_t golioth_time_millis();
+uint64_t golioth_time_micros(void);
+uint64_t golioth_time_millis(void);
 
 void golioth_time_delay_ms(uint32_t ms);

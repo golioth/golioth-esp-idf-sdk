@@ -130,7 +130,11 @@ def main():
     reset(ser)
 
     # Run built in tests on the device and check output
-    num_test_failures = run_built_in_tests(ser)
+    for _ in range(1):
+        num_test_failures = run_built_in_tests(ser)
+        if num_test_failures != 0:
+            break
+        reset(ser)
 
     if num_test_failures == 0:
         run_ota_test(ser)
