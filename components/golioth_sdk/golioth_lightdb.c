@@ -410,7 +410,7 @@ golioth_status_t golioth_lightdb_get_int_sync(
             &response,
             true,
             timeout_s);
-    if (response.is_null) {
+    if (status == GOLIOTH_OK && response.is_null) {
         return GOLIOTH_ERR_NULL;
     }
     return status;
@@ -433,7 +433,7 @@ golioth_status_t golioth_lightdb_get_bool_sync(
             &response,
             true,
             timeout_s);
-    if (response.is_null) {
+    if (status == GOLIOTH_OK && response.is_null) {
         return GOLIOTH_ERR_NULL;
     }
     return status;
@@ -456,7 +456,7 @@ golioth_status_t golioth_lightdb_get_float_sync(
             &response,
             true,
             timeout_s);
-    if (response.is_null) {
+    if (status == GOLIOTH_OK && response.is_null) {
         return GOLIOTH_ERR_NULL;
     }
     return status;
@@ -481,7 +481,7 @@ golioth_status_t golioth_lightdb_get_string_sync(
             &response,
             true,
             timeout_s);
-    if (response.is_null) {
+    if (status == GOLIOTH_OK && response.is_null) {
         return GOLIOTH_ERR_NULL;
     }
     return status;
