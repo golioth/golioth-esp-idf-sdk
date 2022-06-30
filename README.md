@@ -24,8 +24,21 @@ git submodule update --init --recursive
 
 ## Install esp-idf
 
-Install the latest release of esp-idf using the
-[installation directions from Espressif](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html#installation)
+Install version 4.4.1 of esp-idf using the
+[installation directions from Espressif](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html#installation).
+This is the version the SDK is tested against.
+
+For Linux users, you can install esp-idf with these commands:
+
+```sh
+sudo apt-get install git wget flex bison gperf python3 python3-venv cmake ninja-build ccache libffi-dev libssl-dev dfu-util libusb-1.0-0
+mkdir -p ~/esp
+cd ~/esp
+git clone --recursive https://github.com/espressif/esp-idf.git
+cd esp-idf
+git checkout v4.4.1
+./install.sh all
+```
 
 ## Trying the examples
 
