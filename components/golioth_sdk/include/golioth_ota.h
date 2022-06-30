@@ -76,3 +76,5 @@ golioth_status_t golioth_ota_report_state_sync(
         const char* current_version,  // optional, can be NULL
         const char* target_version,   // optional, can be NULL
         int32_t timeout_s);
+
+golioth_ota_state_t golioth_ota_get_state(void);
