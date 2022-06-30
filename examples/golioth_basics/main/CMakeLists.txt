@@ -5,7 +5,6 @@ idf_component_register(
         "app_main.c"
         "../../common/shell.c"
         "../../common/wifi.c"
-        "../../common/fw_update.c"
         "../../common/nvs.c"
     PRIV_REQUIRES
         "golioth_sdk"
@@ -13,7 +12,6 @@ idf_component_register(
         "spi_flash"
         "nvs_flash"
         "json"
-        "app_update"
 )
 list(APPEND EXTRA_C_FLAGS_LIST
     -Werror

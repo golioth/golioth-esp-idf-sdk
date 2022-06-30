@@ -40,14 +40,16 @@ idf_component_register(
         "json"
         "lwip"
         "mbedtls"
+        "app_update"
     SRCS
+        "${libcoap_srcs}"
         "golioth_status.c"
         "golioth_coap_client.c"
         "golioth_log.c"
         "golioth_lightdb.c"
         "golioth_ota.c"
         "golioth_time.c"
-        "${libcoap_srcs}")
+        "golioth_fw_update.c")
 
 list(APPEND EXTRA_C_FLAGS_LIST -Werror)
 component_compile_options(${EXTRA_C_FLAGS_LIST})

@@ -11,7 +11,6 @@
 #include "nvs.h"
 #include "shell.h"
 #include "wifi.h"
-#include "fw_update.h"
 #include "golioth.h"
 
 #define TAG "golioth_example"
@@ -115,7 +114,7 @@ void app_main(void) {
     assert(client);
 
     // Spawn background task that will perform firmware updates (aka OTA update)
-    fw_update_init(client, _current_version);
+    golioth_fw_update_init(client, _current_version);
 
     golioth_client_register_event_callback(client, on_client_event, NULL);
 

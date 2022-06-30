@@ -10,9 +10,9 @@
 #include "esp_flash_partitions.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
-#include "fw_update.h"
+#include "golioth_fw_update.h"
 
-#define TAG "fw_update"
+#define TAG "golioth_fw_update"
 
 static golioth_client_t _client;
 static const char* _current_version;
@@ -348,7 +348,7 @@ static void fw_update_task(void* arg) {
     }
 }
 
-void fw_update_init(golioth_client_t client, const char* current_version) {
+void golioth_fw_update_init(golioth_client_t client, const char* current_version) {
     static bool initialized = false;
 
     ESP_LOGI(TAG, "Current firmware version: %s", current_version);

@@ -14,7 +14,6 @@
 #include "wifi.h"
 #include "time.h"
 #include "shell.h"
-#include "fw_update.h"
 #include "util.h"
 #include "golioth.h"
 
@@ -260,7 +259,7 @@ static int start_ota(int argc, char** argv) {
         test_golioth_client_create();
         test_connects_to_golioth();
     }
-    fw_update_init(_client, _current_version);
+    golioth_fw_update_init(_client, _current_version);
     return 0;
 }
 
