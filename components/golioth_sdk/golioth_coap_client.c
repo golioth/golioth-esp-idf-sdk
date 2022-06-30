@@ -10,7 +10,6 @@
 #include <sys/param.h>  // MIN
 #include <freertos/event_groups.h>
 #include <esp_log.h>
-#include <esp_timer.h>
 #include <coap3/coap.h>
 #include "golioth_client.h"
 #include "golioth_coap_client.h"

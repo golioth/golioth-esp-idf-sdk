@@ -12,6 +12,8 @@ idf_component_register(
         "spi_flash"
         "nvs_flash"
         "json"
+        "driver"
+        "esp_hw_support"
 )
 list(APPEND EXTRA_C_FLAGS_LIST
     -Werror

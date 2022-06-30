@@ -14,6 +14,8 @@ idf_component_register(
         "json"
         "app_update"
         "unity"
+        "driver"
+        "esp_hw_support"
 )
 list(APPEND EXTRA_C_FLAGS_LIST
     -Werror
