@@ -8,6 +8,7 @@
 #include <cJSON.h>
 #include "golioth_ota.h"
 #include "golioth_coap_client.h"
+#include "golioth_statistics.h"
 
 #define TAG "golioth_ota"
 
@@ -63,6 +64,7 @@ golioth_status_t golioth_ota_report_state_sync(
         int32_t timeout_s) {
     char jsonbuf[128] = {};
     cJSON* json = cJSON_CreateObject();
+    GSTATS_INC_ALLOC("json");
     cJSON_AddNumberToObject(json, "state", state);
     cJSON_AddNumberToObject(json, "reason", reason);
     cJSON_AddStringToObject(json, "package", package);
@@ -75,6 +77,7 @@ golioth_status_t golioth_ota_report_state_sync(
     bool printed = cJSON_PrintPreallocated(json, jsonbuf, sizeof(jsonbuf) - 5, false);
     assert(printed);
     cJSON_Delete(json);
+    GSTATS_INC_FREE("json");
 
     _state = state;
     return golioth_coap_client_set(
@@ -103,6 +106,7 @@ golioth_status_t golioth_ota_payload_as_manifest(
         ret = GOLIOTH_ERR_INVALID_FORMAT;
         goto cleanup;
     }
+    GSTATS_INC_ALLOC("json");
 
     const cJSON* seqnum = cJSON_GetObjectItemCaseSensitive(json, "sequenceNumber");
     if (!seqnum || !cJSON_IsNumber(seqnum)) {
@@ -145,6 +149,7 @@ golioth_status_t golioth_ota_payload_as_manifest(
 cleanup:
     if (json) {
         cJSON_Delete(json);
+        GSTATS_INC_FREE("json");
     }
     return ret;
 }

@@ -25,6 +25,7 @@ static SemaphoreHandle_t _connected_sem;
 static SemaphoreHandle_t _disconnected_sem;
 static golioth_client_t _client;
 static uint32_t _initial_free_heap;
+static bool _wifi_connected;
 
 // Note: Don't put TEST_ASSERT_* statements in client callback functions, as this
 // will cause a stack overflow in the client task is any of the assertions fail.
@@ -43,13 +44,12 @@ static void on_client_event(golioth_client_t client, golioth_client_event_t even
 }
 
 static void test_connects_to_wifi(void) {
-    static bool run_once = false;
-    if (run_once) {
+    if (_wifi_connected) {
         return;
     }
-    run_once = true;
     wifi_init(nvs_read_wifi_ssid(), nvs_read_wifi_password());
     TEST_ASSERT_TRUE(wifi_wait_for_connected_with_timeout(10));
+    _wifi_connected = true;
 }
 
 static void test_golioth_client_create(void) {
@@ -230,6 +230,29 @@ static void test_client_task_stack_min_remaining(void) {
     TEST_ASSERT_TRUE(stack_unused >= CONFIG_GOLIOTH_COAP_TASK_STACK_SIZE_BYTES / 4);
 }
 
+static void test_client_destroy_and_no_memory_leaks(void) {
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_stop(_client));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_disconnected_sem, 3000 / portTICK_PERIOD_MS));
+
+    // Wait another 2 s for client to be fully stopped
+    uint64_t timeout_ms = golioth_time_millis() + 2000;
+    while (golioth_time_millis() < timeout_ms) {
+        if (!golioth_client_is_running(_client)) {
+            break;
+        }
+        golioth_time_delay_ms(100);
+    }
+
+    // Request queue should be empty now
+    TEST_ASSERT_EQUAL(0, golioth_client_num_items_in_request_queue(_client));
+
+    golioth_client_destroy(_client);
+    _client = NULL;
+
+    // Verify all allocations made by the client have been freed
+    TEST_ASSERT_FALSE(golioth_client_has_allocation_leaks());
+}
+
 static int built_in_test(int argc, char** argv) {
     UNITY_BEGIN();
     RUN_TEST(test_connects_to_wifi);
@@ -238,8 +261,10 @@ static int built_in_test(int argc, char** argv) {
         // which we compare against when gauging how much RAM the Golioth client uses.
         _initial_free_heap = esp_get_minimum_free_heap_size();
     }
-    RUN_TEST(test_golioth_client_create);
-    RUN_TEST(test_connects_to_golioth);
+    if (!_client) {
+        RUN_TEST(test_golioth_client_create);
+        RUN_TEST(test_connects_to_golioth);
+    }
     RUN_TEST(test_lightdb_set_get_sync);
     RUN_TEST(test_lightdb_set_get_async);
     RUN_TEST(test_golioth_client_heap_usage);
@@ -247,15 +272,15 @@ static int built_in_test(int argc, char** argv) {
     RUN_TEST(test_lightdb_error_if_path_not_found);
     RUN_TEST(test_request_timeout_if_packets_dropped);
     RUN_TEST(test_client_task_stack_min_remaining);
+    RUN_TEST(test_client_destroy_and_no_memory_leaks);
     UNITY_END();
 
     return 0;
 }
 
 static int start_ota(int argc, char** argv) {
-    // Ensure we have a connected client (in case this is the first command run)
+    test_connects_to_wifi();
     if (!_client) {
-        test_connects_to_wifi();
         test_golioth_client_create();
         test_connects_to_golioth();
     }

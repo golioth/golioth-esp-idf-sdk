@@ -23,9 +23,10 @@ static void on_float_value(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    // TODO - check response for errors
-    float value = golioth_payload_as_float(payload, payload_size);
-    ESP_LOGI(TAG, "Got float_value = %f", value);
+    if (response->status == GOLIOTH_OK) {
+        float value = golioth_payload_as_float(payload, payload_size);
+        ESP_LOGI(TAG, "Got float_value = %f", value);
+    }
 }
 
 static void on_my_setting(
@@ -99,9 +100,7 @@ void app_main(void) {
         while (1) {
             vTaskDelay(1000 / portTICK_PERIOD_MS);
             ESP_LOGW(TAG, "WiFi and golioth credentials are not set");
-            ESP_LOGW(
-                    TAG,
-                    "Use the shell commands wifi_set and golioth_set to set them, then restart");
+            ESP_LOGW(TAG, "Use the shell settings commands to set them, then restart");
             vTaskDelay(portMAX_DELAY);
         }
     }
@@ -155,7 +154,10 @@ void app_main(void) {
         golioth_lightdb_set_float_async(client, "float_value", float_value);
         golioth_lightdb_set_string_async(
                 client, "string_value", string_value, strlen(string_value));
-        golioth_lightdb_get_async(client, "float_value", on_float_value, NULL);
+
+        golioth_lightdb_get_async(client, "float_value_a", on_float_value, (void*)0);
+        golioth_lightdb_get_async(client, "float_value_b", on_float_value, (void*)1);
+
         example_json_set_async(client);
         golioth_lightdb_get_async(client, "example_json", on_example_json, NULL);
 
