@@ -255,6 +255,14 @@ static void on_ota_manifest(
         size_t payload_size,
         void* arg) {
     // TODO - check response for errors
+    ESP_LOGD(TAG, "Received OTA manifest: %.*s", payload_size, payload);
+
+    golioth_ota_state_t state = golioth_ota_get_state();
+    if (state == GOLIOTH_OTA_STATE_DOWNLOADING) {
+        ESP_LOGW(TAG, "Ignoring manifest while download in progress");
+        return;
+    }
+
     golioth_status_t status =
             golioth_ota_payload_as_manifest(payload, payload_size, &_ota_manifest);
     if (status != GOLIOTH_OK) {

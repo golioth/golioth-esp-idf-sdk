@@ -19,6 +19,8 @@ typedef struct {
     size_t* block_nbytes;
 } block_get_output_params_t;
 
+static golioth_ota_state_t _state = GOLIOTH_OTA_STATE_IDLE;
+
 size_t golioth_ota_size_to_nblocks(size_t component_size) {
     size_t nblocks = component_size / GOLIOTH_OTA_BLOCKSIZE;
     if ((component_size % GOLIOTH_OTA_BLOCKSIZE) != 0) {
@@ -74,6 +76,7 @@ golioth_status_t golioth_ota_report_state_sync(
     assert(printed);
     cJSON_Delete(json);
 
+    _state = state;
     return golioth_coap_client_set(
             client,
             GOLIOTH_OTA_COMPONENT_PATH_PREFIX,
@@ -195,4 +198,8 @@ golioth_status_t golioth_ota_get_block_sync(
             true,
             timeout_s);
     return status;
+}
+
+golioth_ota_state_t golioth_ota_get_state(void) {
+    return _state;
 }
