@@ -8,6 +8,7 @@
 #include "golioth_coap_client.h"
 #include "golioth_log.h"
 #include "golioth_time.h"
+#include "golioth_statistics.h"
 
 #define TAG "golioth_log"
 
@@ -30,11 +31,13 @@ static golioth_status_t golioth_log_internal(
 
     char logbuf[CONFIG_GOLIOTH_LOG_MAX_MESSAGE_LEN + 5] = {};
     cJSON* json = cJSON_CreateObject();
+    GSTATS_INC_ALLOC("json");
     cJSON_AddStringToObject(json, "level", _level_to_str[level]);
     cJSON_AddStringToObject(json, "module", tag);
     cJSON_AddStringToObject(json, "msg", log_message);
     bool printed = cJSON_PrintPreallocated(json, logbuf, CONFIG_GOLIOTH_LOG_MAX_MESSAGE_LEN, false);
     cJSON_Delete(json);
+    GSTATS_INC_FREE("json");
 
     if (!printed) {
         ESP_LOGE(TAG, "Failed to serialize log: %s", logbuf);

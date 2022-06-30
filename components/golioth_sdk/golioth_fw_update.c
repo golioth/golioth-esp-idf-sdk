@@ -11,6 +11,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
 #include "golioth_fw_update.h"
+#include "golioth_statistics.h"
 
 #define TAG "golioth_fw_update"
 
@@ -363,10 +364,10 @@ void golioth_fw_update_init(golioth_client_t client, const char* current_version
 
     _client = client;
     _current_version = current_version;
-    _manifest_rcvd = xSemaphoreCreateBinary();
+    _manifest_rcvd = xSemaphoreCreateBinary();  // never freed
 
     if (!initialized) {
-        bool task_created = xTaskCreate(
+        bool task_created = xTaskCreate(  // never freed
                 fw_update_task,
                 "fw_update",
                 4096,

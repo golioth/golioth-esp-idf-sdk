@@ -91,4 +91,14 @@ config GOLIOTH_COAP_MAX_PATH_LEN
         Maximum length of a CoAP path (everything after
         "coaps://coap.golioth.io/").
 
+config GOLIOTH_ALLOCATION_TRACKING
+    int "Monitor for memory leaks"
+    default 0
+    help
+        Enables tracking and instrumentation for resource
+        allocations. Primarily intended for developers of the
+        Golioth SDK itself. Will use extra RAM and CPU for
+        tracking the allocations, so it's not recommended for
+        use in production firmware images (only use for test/debug).
+
 endmenu

@@ -6,9 +6,9 @@
 #include <esp_log.h>
 #include "golioth_coap_client.h"
 #include "golioth_lightdb.h"
-#include "golioth_stats.h"
 #include "golioth_util.h"
 #include "golioth_time.h"
+#include "golioth_statistics.h"
 
 #define TAG "golioth_lightdb"
 
@@ -119,6 +119,7 @@ static golioth_status_t golioth_lightdb_set_string_internal(
     if (!buf) {
         return GOLIOTH_ERR_MEM_ALLOC;
     }
+    GSTATS_INC_ALLOC("buf");
     snprintf(buf, bufsize, "\"%s\"", str);
 
     golioth_status_t status = golioth_coap_client_set(
@@ -134,6 +135,7 @@ static golioth_status_t golioth_lightdb_set_string_internal(
             timeout_s);
 
     free(buf);
+    GSTATS_INC_FREE("buf");
     return status;
 }
 
