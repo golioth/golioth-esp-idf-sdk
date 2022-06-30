@@ -547,9 +547,18 @@ static golioth_status_t coap_io_loop_once(
     // Make sure the request isn't too old
     if (golioth_time_millis() > request_msg.ageout_ms) {
         ESP_LOGW(TAG, "Ignoring request that has aged out, type %d", request_msg.type);
+
         if (request_msg.type == GOLIOTH_COAP_REQUEST_POST && request_msg.post.payload_size > 0) {
             free(request_msg.post.payload);
             GSTATS_INC_FREE("request_payload");
+        }
+
+        if (request_msg.request_complete_event) {
+            assert(request_msg.request_complete_ack_sem);
+            vEventGroupDelete(request_msg.request_complete_event);
+            GSTATS_INC_FREE("request_complete_event");
+            vSemaphoreDelete(request_msg.request_complete_ack_sem);
+            GSTATS_INC_FREE("request_complete_ack_sem");
         }
         return GOLIOTH_OK;
     }
