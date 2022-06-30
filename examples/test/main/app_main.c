@@ -102,7 +102,7 @@ static void test_lightdb_set_get_sync(void) {
     int randint = rand();
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_sync(_client, "test_int", randint, 3));
 
-    int get_randint = 0;
+    int32_t get_randint = 0;
     TEST_ASSERT_EQUAL(
             GOLIOTH_OK, golioth_lightdb_get_int_sync(_client, "test_int", &get_randint, 3));
     TEST_ASSERT_EQUAL(randint, get_randint);

@@ -10,6 +10,10 @@
 
 #define TAG "leds"
 
+// TODO - address this warning on recent esp-idf versions:
+// #warning "The legacy RMT driver is deprecated, please use driver/rmt_tx.h and/or driver/rmt_rx.h"
+// [-Werror=cpp]
+
 #define RMT_TX_CHANNEL RMT_CHANNEL_0
 
 #define EXAMPLE_CHASE_SPEED_MS (250)

@@ -41,6 +41,7 @@ idf_component_register(
         "lwip"
         "mbedtls"
         "app_update"
+        "esp_timer"
     SRCS
         "${libcoap_srcs}"
         "golioth_status.c"
