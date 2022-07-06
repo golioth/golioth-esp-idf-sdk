@@ -71,7 +71,10 @@ static void on_desired_buzz(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
+
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
@@ -92,7 +95,10 @@ static void on_desired_text(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
+
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
@@ -140,7 +146,10 @@ static void on_desired_leds(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
+
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }

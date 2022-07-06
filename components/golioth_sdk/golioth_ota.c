@@ -164,7 +164,9 @@ static void on_block_rcvd(
     assert(arg);
     assert(payload_size <= GOLIOTH_OTA_BLOCKSIZE);
 
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
 
     block_get_output_params_t* out_params = (block_get_output_params_t*)arg;
     assert(out_params->buf);
