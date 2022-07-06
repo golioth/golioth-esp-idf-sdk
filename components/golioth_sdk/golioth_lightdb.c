@@ -434,7 +434,10 @@ static void on_payload(
         void* arg) {
     lightdb_get_response_t* ldb_response = (lightdb_get_response_t*)arg;
 
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        ldb_response->is_null = true;
+        return;
+    }
 
     if (golioth_payload_is_null(payload, payload_size)) {
         ldb_response->is_null = true;

@@ -255,7 +255,10 @@ static void on_ota_manifest(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
+
     ESP_LOGD(TAG, "Received OTA manifest: %.*s", payload_size, payload);
 
     golioth_ota_state_t state = golioth_ota_get_state();

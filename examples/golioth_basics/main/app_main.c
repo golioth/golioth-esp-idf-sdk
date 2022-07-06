@@ -23,10 +23,12 @@ static void on_float_value(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    if (response->status == GOLIOTH_OK) {
-        float value = golioth_payload_as_float(payload, payload_size);
-        ESP_LOGI(TAG, "Got float_value = %f", value);
+    if (response->status != GOLIOTH_OK) {
+        return;
     }
+
+    float value = golioth_payload_as_float(payload, payload_size);
+    ESP_LOGI(TAG, "Got float_value = %f", value);
 }
 
 static void on_my_setting(
@@ -36,12 +38,14 @@ static void on_my_setting(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
+
     // Payload might be null if desired/my_setting is deleted, so ignore that case
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
-
-    // TODO - check response for errors
 
     int32_t* actual_value_ptr = (int32_t*)arg;
     int32_t desired_value = golioth_payload_as_int(payload, payload_size);
@@ -68,7 +72,10 @@ static void on_example_json(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
+
     cJSON* json = cJSON_ParseWithLength((const char*)payload, payload_size);
     if (!json) {
         ESP_LOGE(TAG, "Failed to parse example_json");
