@@ -47,7 +47,7 @@ static void on_my_setting(
     int32_t desired_value = golioth_payload_as_int(payload, payload_size);
     ESP_LOGI(TAG, "Cloud desires %s = %d. Setting now.", path, desired_value);
     *actual_value_ptr = desired_value;
-    golioth_lightdb_delete_async(client, path);
+    golioth_lightdb_delete_async(client, path, NULL, NULL);
 }
 
 static void example_json_set_async(golioth_client_t client) {
@@ -58,7 +58,7 @@ static void example_json_set_async(golioth_client_t client) {
     bool printed = cJSON_PrintPreallocated(json, jsonbuf, sizeof(jsonbuf) - 5, false);
     assert(printed);
     cJSON_Delete(json);
-    golioth_lightdb_set_json_async(client, "example_json", jsonbuf, strlen(jsonbuf));
+    golioth_lightdb_set_json_async(client, "example_json", jsonbuf, strlen(jsonbuf), NULL, NULL);
 }
 
 static void on_example_json(
@@ -148,12 +148,12 @@ void app_main(void) {
         }
 
         // Asynchronous API examples (non-blocking, doesn't wait for server response)
-        golioth_log_info_async(client, TAG, "This is a message");
-        golioth_lightdb_set_int_async(client, "iteration", iteration);
-        golioth_lightdb_set_int_async(client, "my_setting", my_setting);
-        golioth_lightdb_set_float_async(client, "float_value", float_value);
+        golioth_log_info_async(client, TAG, "This is a message", NULL, NULL);
+        golioth_lightdb_set_int_async(client, "iteration", iteration, NULL, NULL);
+        golioth_lightdb_set_int_async(client, "my_setting", my_setting, NULL, NULL);
+        golioth_lightdb_set_float_async(client, "float_value", float_value, NULL, NULL);
         golioth_lightdb_set_string_async(
-                client, "string_value", string_value, strlen(string_value));
+                client, "string_value", string_value, strlen(string_value), NULL, NULL);
 
         golioth_lightdb_get_async(client, "float_value_a", on_float_value, (void*)0);
         golioth_lightdb_get_async(client, "float_value_b", on_float_value, (void*)1);

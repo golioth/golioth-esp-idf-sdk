@@ -87,10 +87,12 @@ static void test_request_dropped_if_client_not_running(void) {
     }
 
     // Verify each request type returns proper state
-    TEST_ASSERT_EQUAL(GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_set_int_async(_client, "a", 1));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_set_int_async(_client, "a", 1, NULL, NULL));
     TEST_ASSERT_EQUAL(
             GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_get_async(_client, "a", NULL, NULL));
-    TEST_ASSERT_EQUAL(GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_delete_async(_client, "a"));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_delete_async(_client, "a", NULL, NULL));
     TEST_ASSERT_EQUAL(
             GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_observe_async(_client, "a", NULL, NULL));
 
@@ -100,6 +102,7 @@ static void test_request_dropped_if_client_not_running(void) {
 
 static void test_lightdb_set_get_sync(void) {
     int randint = rand();
+    ESP_LOGD(TAG, "randint = %d", randint);
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_sync(_client, "test_int", randint, 3));
 
     int32_t get_randint = 0;
@@ -108,9 +111,9 @@ static void test_lightdb_set_get_sync(void) {
     TEST_ASSERT_EQUAL(randint, get_randint);
 }
 
-static bool _on_test_int2_called = false;
+static bool _on_get_test_int2_called = false;
 static int32_t _test_int2_value = 0;
-static void on_test_int2(
+static void on_get_test_int2(
         golioth_client_t client,
         const golioth_response_t* response,
         const char* path,
@@ -119,35 +122,61 @@ static void on_test_int2(
         void* arg) {
     golioth_response_t* arg_response = (golioth_response_t*)arg;
     *arg_response = *response;
-    _on_test_int2_called = true;
+    _on_get_test_int2_called = true;
     _test_int2_value = golioth_payload_as_int(payload, payload_size);
 }
 
+static bool _on_set_test_int2_called = false;
+static void on_set_test_int2(
+        golioth_client_t client,
+        const golioth_response_t* response,
+        const char* path,
+        void* arg) {
+    golioth_response_t* arg_response = (golioth_response_t*)arg;
+    *arg_response = *response;
+    _on_set_test_int2_called = true;
+}
+
 static void test_lightdb_set_get_async(void) {
+    _on_set_test_int2_called = false;
+    _on_get_test_int2_called = false;
+    golioth_response_t set_async_response = {};
+    golioth_response_t get_async_response = {};
+
     int randint = rand();
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_async(_client, "test_int2", randint));
-
-    // Wait a bit...there's currently no way to know when an async set has finished, so wait
-    // 3 seconds, which should cover the maximum server response latency
-    golioth_time_delay_ms(3000);
-
-    _on_test_int2_called = false;
-    golioth_response_t async_response = {};
     TEST_ASSERT_EQUAL(
             GOLIOTH_OK,
-            golioth_lightdb_get_async(_client, "test_int2", on_test_int2, &async_response));
+            golioth_lightdb_set_int_async(
+                    _client, "test_int2", randint, on_set_test_int2, &set_async_response));
 
+    // Wait for response
     uint64_t timeout_ms = golioth_time_millis() + 3000;
     while (golioth_time_millis() < timeout_ms) {
-        if (_on_test_int2_called) {
+        if (_on_set_test_int2_called) {
             break;
         }
         golioth_time_delay_ms(100);
     }
-    TEST_ASSERT_TRUE(_on_test_int2_called);
-    TEST_ASSERT_EQUAL(GOLIOTH_OK, async_response.status);
-    TEST_ASSERT_EQUAL(2, async_response.class);
-    TEST_ASSERT_EQUAL(5, async_response.code);
+    TEST_ASSERT_TRUE(_on_set_test_int2_called);
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, set_async_response.status);
+    TEST_ASSERT_EQUAL(2, set_async_response.class);  // success
+    TEST_ASSERT_EQUAL(4, set_async_response.code);   // changed
+
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_OK,
+            golioth_lightdb_get_async(_client, "test_int2", on_get_test_int2, &get_async_response));
+
+    timeout_ms = golioth_time_millis() + 3000;
+    while (golioth_time_millis() < timeout_ms) {
+        if (_on_get_test_int2_called) {
+            break;
+        }
+        golioth_time_delay_ms(100);
+    }
+    TEST_ASSERT_TRUE(_on_get_test_int2_called);
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, get_async_response.status);
+    TEST_ASSERT_EQUAL(2, get_async_response.class);  // success
+    TEST_ASSERT_EQUAL(5, get_async_response.code);   // content
     TEST_ASSERT_EQUAL(randint, _test_int2_value);
 }
 
@@ -170,19 +199,22 @@ static void test_request_timeout_if_packets_dropped(void) {
 
     int32_t dummy = 0;
     TEST_ASSERT_EQUAL(
-            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_get_int_sync(_client, "test_int", &dummy, 1));
-    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, golioth_lightdb_set_int_sync(_client, "test_int", 4, 1));
+            GOLIOTH_ERR_TIMEOUT,
+            golioth_lightdb_get_int_sync(_client, "expect_timeout", &dummy, 1));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_set_int_sync(_client, "expect_timeout", 4, 1));
 
     // TODO - remove surrounding asserts
     assert(_client);
-    TEST_ASSERT_EQUAL(GOLIOTH_ERR_TIMEOUT, golioth_lightdb_delete_sync(_client, "test_int", 1));
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_ERR_TIMEOUT, golioth_lightdb_delete_sync(_client, "expect_timeout", 1));
     assert(_client);
 
     _on_test_timeout_called = false;
     golioth_response_t async_response = {};
     TEST_ASSERT_EQUAL(
             GOLIOTH_OK,
-            golioth_lightdb_get_async(_client, "test_int", on_test_timeout, &async_response));
+            golioth_lightdb_get_async(_client, "expect_timeout", on_test_timeout, &async_response));
 
     // Wait up to 12 s for async response to time out
     uint64_t timeout_ms = golioth_time_millis() + 12000;
@@ -201,7 +233,7 @@ static void test_request_timeout_if_packets_dropped(void) {
     uint64_t now = golioth_time_millis();
     TEST_ASSERT_EQUAL(
             GOLIOTH_ERR_TIMEOUT,
-            golioth_lightdb_delete_sync(_client, "test_int", GOLIOTH_WAIT_FOREVER));
+            golioth_lightdb_delete_sync(_client, "expect_timeout", GOLIOTH_WAIT_FOREVER));
     TEST_ASSERT_TRUE(golioth_time_millis() - now > (1000 * CONFIG_GOLIOTH_COAP_RESPONSE_TIMEOUT_S));
 
     golioth_client_set_packet_loss_percent(0);

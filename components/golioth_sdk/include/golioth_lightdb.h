@@ -15,7 +15,6 @@ bool golioth_payload_as_bool(const uint8_t* payload, size_t payload_size);
 bool golioth_payload_is_null(const uint8_t* payload, size_t payload_size);
 
 // TODO - block transfers for large post/get
-// TODO (maybe) - add callbacks to async set/delete APIs, in case user wants to handle errors
 
 //
 // LightDB State
@@ -25,7 +24,9 @@ bool golioth_payload_is_null(const uint8_t* payload, size_t payload_size);
 golioth_status_t golioth_lightdb_set_int_async(
         golioth_client_t client,
         const char* path,
-        int32_t value);
+        int32_t value,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_set_int_sync(
         golioth_client_t client,
         const char* path,
@@ -34,7 +35,9 @@ golioth_status_t golioth_lightdb_set_int_sync(
 golioth_status_t golioth_lightdb_set_bool_async(
         golioth_client_t client,
         const char* path,
-        bool value);
+        bool value,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_set_bool_sync(
         golioth_client_t client,
         const char* path,
@@ -43,7 +46,9 @@ golioth_status_t golioth_lightdb_set_bool_sync(
 golioth_status_t golioth_lightdb_set_float_async(
         golioth_client_t client,
         const char* path,
-        float value);
+        float value,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_set_float_sync(
         golioth_client_t client,
         const char* path,
@@ -53,7 +58,9 @@ golioth_status_t golioth_lightdb_set_string_async(
         golioth_client_t client,
         const char* path,
         const char* str,
-        size_t str_len);
+        size_t str_len,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_set_string_sync(
         golioth_client_t client,
         const char* path,
@@ -64,7 +71,9 @@ golioth_status_t golioth_lightdb_set_json_async(
         golioth_client_t client,
         const char* path,
         const char* json_str,
-        size_t json_str_len);
+        size_t json_str_len,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_set_json_sync(
         golioth_client_t client,
         const char* path,
@@ -107,7 +116,11 @@ golioth_status_t golioth_lightdb_get_json_sync(
         int32_t timeout_s);
 
 // delete
-golioth_status_t golioth_lightdb_delete_async(golioth_client_t client, const char* path);
+golioth_status_t golioth_lightdb_delete_async(
+        golioth_client_t client,
+        const char* path,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_delete_sync(
         golioth_client_t client,
         const char* path,
@@ -127,7 +140,9 @@ golioth_status_t golioth_lightdb_observe_async(
 golioth_status_t golioth_lightdb_stream_set_int_async(
         golioth_client_t client,
         const char* path,
-        int32_t value);
+        int32_t value,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_stream_set_int_sync(
         golioth_client_t client,
         const char* path,
@@ -136,7 +151,9 @@ golioth_status_t golioth_lightdb_stream_set_int_sync(
 golioth_status_t golioth_lightdb_stream_set_bool_async(
         golioth_client_t client,
         const char* path,
-        bool value);
+        bool value,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_stream_set_bool_sync(
         golioth_client_t client,
         const char* path,
@@ -145,7 +162,9 @@ golioth_status_t golioth_lightdb_stream_set_bool_sync(
 golioth_status_t golioth_lightdb_stream_set_float_async(
         golioth_client_t client,
         const char* path,
-        float value);
+        float value,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_stream_set_float_sync(
         golioth_client_t client,
         const char* path,
@@ -155,7 +174,9 @@ golioth_status_t golioth_lightdb_stream_set_string_async(
         golioth_client_t client,
         const char* path,
         const char* str,
-        size_t str_len);
+        size_t str_len,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_stream_set_string_sync(
         golioth_client_t client,
         const char* path,
@@ -166,7 +187,9 @@ golioth_status_t golioth_lightdb_stream_set_json_async(
         golioth_client_t client,
         const char* path,
         const char* json_str,
-        size_t json_str_len);
+        size_t json_str_len,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_lightdb_stream_set_json_sync(
         golioth_client_t client,
         const char* path,
