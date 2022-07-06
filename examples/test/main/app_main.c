@@ -105,6 +105,14 @@ static void test_lightdb_set_get_sync(void) {
     ESP_LOGD(TAG, "randint = %d", randint);
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_sync(_client, "test_int", randint, 3));
 
+    // Delay for a bit. This is done because the value may not have been written to
+    // the database on the back end yet.
+    //
+    // The server responds before the data is written to the database ("eventually consistent"),
+    // so there's a chance that if we try to read immediately, we will get the wrong data,
+    // so we need to wait to be sure.
+    golioth_time_delay_ms(200);
+
     int32_t get_randint = 0;
     TEST_ASSERT_EQUAL(
             GOLIOTH_OK, golioth_lightdb_get_int_sync(_client, "test_int", &get_randint, 3));
