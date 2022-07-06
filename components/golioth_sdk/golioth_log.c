@@ -26,7 +26,9 @@ static golioth_status_t golioth_log_internal(
         const char* tag,
         const char* log_message,
         bool is_synchronous,
-        int32_t timeout_s) {
+        int32_t timeout_s,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     assert(level <= GOLIOTH_LOG_LEVEL_DEBUG);
 
     char logbuf[CONFIG_GOLIOTH_LOG_MAX_MESSAGE_LEN + 5] = {};
@@ -52,8 +54,8 @@ static golioth_status_t golioth_log_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)logbuf,
             msg_len,
-            NULL,
-            NULL,
+            callback,
+            callback_arg,
             is_synchronous,
             timeout_s);
 }
@@ -65,7 +67,14 @@ golioth_status_t golioth_log_error_async(
         golioth_set_cb_fn callback,
         void* callback_arg) {
     return golioth_log_internal(
-            client, GOLIOTH_LOG_LEVEL_ERROR, tag, log_message, false, GOLIOTH_WAIT_FOREVER);
+            client,
+            GOLIOTH_LOG_LEVEL_ERROR,
+            tag,
+            log_message,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_log_warn_async(
@@ -75,7 +84,14 @@ golioth_status_t golioth_log_warn_async(
         golioth_set_cb_fn callback,
         void* callback_arg) {
     return golioth_log_internal(
-            client, GOLIOTH_LOG_LEVEL_WARN, tag, log_message, false, GOLIOTH_WAIT_FOREVER);
+            client,
+            GOLIOTH_LOG_LEVEL_WARN,
+            tag,
+            log_message,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_log_info_async(
@@ -85,7 +101,14 @@ golioth_status_t golioth_log_info_async(
         golioth_set_cb_fn callback,
         void* callback_arg) {
     return golioth_log_internal(
-            client, GOLIOTH_LOG_LEVEL_INFO, tag, log_message, false, GOLIOTH_WAIT_FOREVER);
+            client,
+            GOLIOTH_LOG_LEVEL_INFO,
+            tag,
+            log_message,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_log_debug_async(
@@ -95,7 +118,14 @@ golioth_status_t golioth_log_debug_async(
         golioth_set_cb_fn callback,
         void* callback_arg) {
     return golioth_log_internal(
-            client, GOLIOTH_LOG_LEVEL_DEBUG, tag, log_message, false, GOLIOTH_WAIT_FOREVER);
+            client,
+            GOLIOTH_LOG_LEVEL_DEBUG,
+            tag,
+            log_message,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_log_error_sync(
@@ -103,7 +133,8 @@ golioth_status_t golioth_log_error_sync(
         const char* tag,
         const char* log_message,
         int32_t timeout_s) {
-    return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_ERROR, tag, log_message, true, timeout_s);
+    return golioth_log_internal(
+            client, GOLIOTH_LOG_LEVEL_ERROR, tag, log_message, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_log_warn_sync(
@@ -111,7 +142,8 @@ golioth_status_t golioth_log_warn_sync(
         const char* tag,
         const char* log_message,
         int32_t timeout_s) {
-    return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_WARN, tag, log_message, true, timeout_s);
+    return golioth_log_internal(
+            client, GOLIOTH_LOG_LEVEL_WARN, tag, log_message, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_log_info_sync(
@@ -119,7 +151,8 @@ golioth_status_t golioth_log_info_sync(
         const char* tag,
         const char* log_message,
         int32_t timeout_s) {
-    return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_INFO, tag, log_message, true, timeout_s);
+    return golioth_log_internal(
+            client, GOLIOTH_LOG_LEVEL_INFO, tag, log_message, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_log_debug_sync(
@@ -127,5 +160,6 @@ golioth_status_t golioth_log_debug_sync(
         const char* tag,
         const char* log_message,
         int32_t timeout_s) {
-    return golioth_log_internal(client, GOLIOTH_LOG_LEVEL_DEBUG, tag, log_message, true, timeout_s);
+    return golioth_log_internal(
+            client, GOLIOTH_LOG_LEVEL_DEBUG, tag, log_message, true, timeout_s, NULL, NULL);
 }
