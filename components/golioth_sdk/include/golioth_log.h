@@ -19,19 +19,27 @@ typedef enum {
 golioth_status_t golioth_log_error_async(
         golioth_client_t client,
         const char* tag,
-        const char* log_message);
+        const char* log_message,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_log_warn_async(
         golioth_client_t client,
         const char* tag,
-        const char* log_message);
+        const char* log_message,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_log_info_async(
         golioth_client_t client,
         const char* tag,
-        const char* log_message);
+        const char* log_message,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 golioth_status_t golioth_log_debug_async(
         golioth_client_t client,
         const char* tag,
-        const char* log_message);
+        const char* log_message,
+        golioth_set_cb_fn callback,
+        void* callback_arg);
 
 // Sync APIs (blocking, wait for server response or timeout)
 golioth_status_t golioth_log_error_sync(
