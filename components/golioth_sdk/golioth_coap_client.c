@@ -682,7 +682,7 @@ static golioth_status_t coap_io_loop_once(
         } else if (
                 request_msg.type == GOLIOTH_COAP_REQUEST_GET_BLOCK
                 && request_msg.get_block.callback) {
-            request_msg.get.callback(
+            request_msg.get_block.callback(
                     client, &response, request_msg.path, NULL, 0, request_msg.get_block.arg);
         } else if (request_msg.type == GOLIOTH_COAP_REQUEST_POST && request_msg.post.callback) {
             request_msg.post.callback(client, &response, request_msg.path, request_msg.post.arg);

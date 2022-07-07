@@ -174,7 +174,7 @@ static golioth_status_t fw_update_download_and_write_flash(void) {
     if (bytes_written != _main_component->size) {
         ESP_LOGE(
                 TAG,
-                "Download interrupted, wrote %zu of %zu bytes",
+                "Download failed, downloaded size %zu does not match manifest size %zu",
                 bytes_written,
                 _main_component->size);
         ESP_LOGI(TAG, "State = Idle");
