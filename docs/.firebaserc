@@ -1,0 +1,17 @@
+{
+  "projects": {
+    "default": "golioth"
+  },
+  "targets": {
+    "golioth": {
+      "hosting": {
+        "docs-dev": [
+          "golioth-esp-idf-sdk-doxygen-dev"
+        ],
+        "docs-prod": [
+          "golioth-esp-idf-sdk-doxygen"
+        ]
+      }
+    }
+  }
+}

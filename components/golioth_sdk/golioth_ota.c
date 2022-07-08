@@ -95,12 +95,12 @@ golioth_status_t golioth_ota_report_state_sync(
 
 golioth_status_t golioth_ota_payload_as_manifest(
         const uint8_t* payload,
-        size_t payload_len,
+        size_t payload_size,
         golioth_ota_manifest_t* manifest) {
     golioth_status_t ret = GOLIOTH_OK;
     memset(manifest, 0, sizeof(*manifest));
 
-    cJSON* json = cJSON_ParseWithLength((const char*)payload, payload_len);
+    cJSON* json = cJSON_ParseWithLength((const char*)payload, payload_size);
     if (!json) {
         ESP_LOGE(TAG, "Failed to parse manifest");
         ret = GOLIOTH_ERR_INVALID_FORMAT;

@@ -14,6 +14,13 @@
 
 #define CONFIG_GOLIOTH_LOG_MAX_MESSAGE_LEN 100
 
+typedef enum {
+    GOLIOTH_LOG_LEVEL_ERROR,
+    GOLIOTH_LOG_LEVEL_WARN,
+    GOLIOTH_LOG_LEVEL_INFO,
+    GOLIOTH_LOG_LEVEL_DEBUG
+} golioth_log_level_t;
+
 static const char* _level_to_str[GOLIOTH_LOG_LEVEL_DEBUG + 1] = {
         [GOLIOTH_LOG_LEVEL_ERROR] = "error",
         [GOLIOTH_LOG_LEVEL_WARN] = "warn",
