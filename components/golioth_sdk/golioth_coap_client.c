@@ -714,10 +714,10 @@ static void on_keepalive(TimerHandle_t timer) {
     }
 }
 
-golioth_status_t golioth_client_is_running(golioth_client_t client) {
+bool golioth_client_is_running(golioth_client_t client) {
     golioth_coap_client_t* c = (golioth_coap_client_t*)client;
     if (!c) {
-        return GOLIOTH_ERR_NULL;
+        return false;
     }
     return c->is_running;
 }
