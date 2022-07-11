@@ -5,7 +5,6 @@ idf_component_register(
         "app_main.c"
         "../../common/shell.c"
         "../../common/wifi.c"
-        "../../common/fw_update.c"
         "../../common/nvs.c"
     PRIV_REQUIRES
         "golioth_sdk"
