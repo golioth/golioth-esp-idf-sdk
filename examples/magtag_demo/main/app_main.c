@@ -71,7 +71,10 @@ static void on_desired_buzz(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
+
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
@@ -81,7 +84,7 @@ static void on_desired_buzz(
 
     if (buzz) {
         speaker_play_audio(coin_audio, sizeof(coin_audio), COIN_SAMPLE_RATE);
-        golioth_lightdb_delete_async(client, path);
+        golioth_lightdb_delete_async(client, path, NULL, NULL);
     }
 }
 
@@ -92,7 +95,10 @@ static void on_desired_text(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
+
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
@@ -110,7 +116,7 @@ static void on_desired_text(
     ESP_LOGI(TAG, "Got desired/text = %s", text);
     write_text(text, strlen(text));
     cJSON_Delete(json);
-    golioth_lightdb_delete_async(client, path);
+    golioth_lightdb_delete_async(client, path, NULL, NULL);
 }
 
 static void set_led_from_json(uint32_t led_index, const cJSON* json) {
@@ -140,7 +146,10 @@ static void on_desired_leds(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
+
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
@@ -159,7 +168,7 @@ static void on_desired_leds(
     set_led_from_json(3, cJSON_GetObjectItemCaseSensitive(json, "3"));
 
     cJSON_Delete(json);
-    golioth_lightdb_delete_async(client, path);
+    golioth_lightdb_delete_async(client, path, NULL, NULL);
 }
 
 static const char* led_color_to_str(uint32_t color) {
@@ -194,7 +203,7 @@ static void publish_state(golioth_client_t client) {
     bool printed = cJSON_PrintPreallocated(root, jsonbuf, sizeof(jsonbuf) - 5, false);
     assert(printed);
     cJSON_Delete(root);
-    golioth_lightdb_set_json_async(client, "state", jsonbuf, strlen(jsonbuf));
+    golioth_lightdb_set_json_async(client, "state", jsonbuf, strlen(jsonbuf), NULL, NULL);
 }
 
 static void app_gpio_init(void) {

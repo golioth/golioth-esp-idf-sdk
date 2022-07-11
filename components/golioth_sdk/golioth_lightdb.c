@@ -6,8 +6,9 @@
 #include <esp_log.h>
 #include "golioth_coap_client.h"
 #include "golioth_lightdb.h"
-#include "golioth_stats.h"
 #include "golioth_util.h"
+#include "golioth_time.h"
+#include "golioth_statistics.h"
 
 #define TAG "golioth_lightdb"
 
@@ -38,7 +39,10 @@ static golioth_status_t golioth_lightdb_set_int_internal(
         const char* path_prefix,
         const char* path,
         int32_t value,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     char buf[16] = {};
     snprintf(buf, sizeof(buf), "%d", value);
     return golioth_coap_client_set(
@@ -48,9 +52,10 @@ static golioth_status_t golioth_lightdb_set_int_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
             strlen(buf),
-            NULL,
-            NULL,
-            is_synchronous);
+            callback,
+            callback_arg,
+            is_synchronous,
+            timeout_s);
 }
 
 static golioth_status_t golioth_lightdb_set_bool_internal(
@@ -58,7 +63,10 @@ static golioth_status_t golioth_lightdb_set_bool_internal(
         const char* path_prefix,
         const char* path,
         bool value,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     const char* valuestr = (value ? "true" : "false");
     return golioth_coap_client_set(
             client,
@@ -67,9 +75,10 @@ static golioth_status_t golioth_lightdb_set_bool_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)valuestr,
             strlen(valuestr),
-            NULL,
-            NULL,
-            is_synchronous);
+            callback,
+            callback_arg,
+            is_synchronous,
+            timeout_s);
 }
 
 static golioth_status_t golioth_lightdb_set_float_internal(
@@ -77,7 +86,10 @@ static golioth_status_t golioth_lightdb_set_float_internal(
         const char* path_prefix,
         const char* path,
         float value,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     char buf[32] = {};
     snprintf(buf, sizeof(buf), "%f", value);
     return golioth_coap_client_set(
@@ -87,9 +99,10 @@ static golioth_status_t golioth_lightdb_set_float_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
             strlen(buf),
-            NULL,
-            NULL,
-            is_synchronous);
+            callback,
+            callback_arg,
+            is_synchronous,
+            timeout_s);
 }
 
 static golioth_status_t golioth_lightdb_set_string_internal(
@@ -98,7 +111,10 @@ static golioth_status_t golioth_lightdb_set_string_internal(
         const char* path,
         const char* str,
         size_t str_len,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     // Server requires that non-JSON-formatted strings
     // be surrounded with literal ".
     //
@@ -111,6 +127,7 @@ static golioth_status_t golioth_lightdb_set_string_internal(
     if (!buf) {
         return GOLIOTH_ERR_MEM_ALLOC;
     }
+    GSTATS_INC_ALLOC("buf");
     snprintf(buf, bufsize, "\"%s\"", str);
 
     golioth_status_t status = golioth_coap_client_set(
@@ -120,11 +137,13 @@ static golioth_status_t golioth_lightdb_set_string_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)buf,
             bufsize - 1,  // excluding NULL
-            NULL,
-            NULL,
-            is_synchronous);
+            callback,
+            callback_arg,
+            is_synchronous,
+            timeout_s);
 
     free(buf);
+    GSTATS_INC_FREE("buf");
     return status;
 }
 
@@ -132,8 +151,12 @@ static golioth_status_t golioth_lightdb_delete_internal(
         golioth_client_t client,
         const char* path_prefix,
         const char* path,
-        bool is_synchronous) {
-    return golioth_coap_client_delete(client, path_prefix, path, NULL, NULL, is_synchronous);
+        bool is_synchronous,
+        int32_t timeout_s,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
+    return golioth_coap_client_delete(
+            client, path_prefix, path, callback, callback_arg, is_synchronous, timeout_s);
 }
 
 static golioth_status_t golioth_lightdb_get_internal(
@@ -142,7 +165,8 @@ static golioth_status_t golioth_lightdb_get_internal(
         const char* path,
         golioth_get_cb_fn callback,
         void* arg,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s) {
     return golioth_coap_client_get(
             client,
             path_prefix,
@@ -150,7 +174,8 @@ static golioth_status_t golioth_lightdb_get_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             callback,
             arg,
-            is_synchronous);
+            is_synchronous,
+            timeout_s);
 }
 
 static golioth_status_t golioth_lightdb_set_json_internal(
@@ -159,7 +184,10 @@ static golioth_status_t golioth_lightdb_set_json_internal(
         const char* path,
         const char* json_str,
         size_t json_str_len,
-        bool is_synchronous) {
+        bool is_synchronous,
+        int32_t timeout_s,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_coap_client_set(
             client,
             path_prefix,
@@ -167,9 +195,10 @@ static golioth_status_t golioth_lightdb_set_json_internal(
             COAP_MEDIATYPE_APPLICATION_JSON,
             (const uint8_t*)json_str,
             json_str_len,
-            NULL,
-            NULL,
-            is_synchronous);
+            callback,
+            callback_arg,
+            is_synchronous,
+            timeout_s);
 }
 
 int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size) {
@@ -202,43 +231,90 @@ bool golioth_payload_is_null(const uint8_t* payload, size_t payload_size) {
 golioth_status_t golioth_lightdb_set_int_async(
         golioth_client_t client,
         const char* path,
-        int32_t value) {
+        int32_t value,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_int_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, false);
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            value,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_set_bool_async(
         golioth_client_t client,
         const char* path,
-        bool value) {
+        bool value,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_bool_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, false);
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            value,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_set_float_async(
         golioth_client_t client,
         const char* path,
-        float value) {
+        float value,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_float_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, false);
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            value,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_set_string_async(
         golioth_client_t client,
         const char* path,
         const char* str,
-        size_t str_len) {
+        size_t str_len,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_string_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, str, str_len, false);
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            str,
+            str_len,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_set_json_async(
         golioth_client_t client,
         const char* path,
         const char* json_str,
-        size_t json_str_len) {
+        size_t json_str_len,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_json_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, json_str, json_str_len, false);
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            json_str,
+            json_str_len,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_get_async(
@@ -247,11 +323,28 @@ golioth_status_t golioth_lightdb_get_async(
         golioth_get_cb_fn callback,
         void* arg) {
     return golioth_lightdb_get_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, callback, arg, false);
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            callback,
+            arg,
+            false,
+            GOLIOTH_WAIT_FOREVER);
 }
 
-golioth_status_t golioth_lightdb_delete_async(golioth_client_t client, const char* path) {
-    return golioth_lightdb_delete_internal(client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, false);
+golioth_status_t golioth_lightdb_delete_async(
+        golioth_client_t client,
+        const char* path,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
+    return golioth_lightdb_delete_internal(
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_observe_async(
@@ -272,43 +365,64 @@ golioth_status_t golioth_lightdb_observe_async(
 golioth_status_t golioth_lightdb_set_int_sync(
         golioth_client_t client,
         const char* path,
-        int32_t value) {
+        int32_t value,
+        int32_t timeout_s) {
     return golioth_lightdb_set_int_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, true);
+            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_lightdb_set_bool_sync(
         golioth_client_t client,
         const char* path,
-        bool value) {
+        bool value,
+        int32_t timeout_s) {
     return golioth_lightdb_set_bool_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, true);
+            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_lightdb_set_float_sync(
         golioth_client_t client,
         const char* path,
-        float value) {
+        float value,
+        int32_t timeout_s) {
     return golioth_lightdb_set_float_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, true);
+            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, value, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_lightdb_set_string_sync(
         golioth_client_t client,
         const char* path,
         const char* str,
-        size_t str_len) {
+        size_t str_len,
+        int32_t timeout_s) {
     return golioth_lightdb_set_string_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, str, str_len, true);
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            str,
+            str_len,
+            true,
+            timeout_s,
+            NULL,
+            NULL);
 }
 
 golioth_status_t golioth_lightdb_set_json_sync(
         golioth_client_t client,
         const char* path,
         const char* json_str,
-        size_t json_str_len) {
+        size_t json_str_len,
+        int32_t timeout_s) {
     return golioth_lightdb_set_json_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, json_str, json_str_len, true);
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            json_str,
+            json_str_len,
+            true,
+            timeout_s,
+            NULL,
+            NULL);
 }
 
 static void on_payload(
@@ -320,7 +434,10 @@ static void on_payload(
         void* arg) {
     lightdb_get_response_t* ldb_response = (lightdb_get_response_t*)arg;
 
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        ldb_response->is_null = true;
+        return;
+    }
 
     if (golioth_payload_is_null(payload, payload_size)) {
         ldb_response->is_null = true;
@@ -351,14 +468,21 @@ static void on_payload(
 golioth_status_t golioth_lightdb_get_int_sync(
         golioth_client_t client,
         const char* path,
-        int32_t* value) {
+        int32_t* value,
+        int32_t timeout_s) {
     lightdb_get_response_t response = {
             .type = LIGHTDB_GET_TYPE_INT,
             .i = value,
     };
     golioth_status_t status = golioth_lightdb_get_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, on_payload, &response, true);
-    if (response.is_null) {
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            on_payload,
+            &response,
+            true,
+            timeout_s);
+    if (status == GOLIOTH_OK && response.is_null) {
         return GOLIOTH_ERR_NULL;
     }
     return status;
@@ -367,14 +491,21 @@ golioth_status_t golioth_lightdb_get_int_sync(
 golioth_status_t golioth_lightdb_get_bool_sync(
         golioth_client_t client,
         const char* path,
-        bool* value) {
+        bool* value,
+        int32_t timeout_s) {
     lightdb_get_response_t response = {
             .type = LIGHTDB_GET_TYPE_BOOL,
             .b = value,
     };
     golioth_status_t status = golioth_lightdb_get_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, on_payload, &response, true);
-    if (response.is_null) {
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            on_payload,
+            &response,
+            true,
+            timeout_s);
+    if (status == GOLIOTH_OK && response.is_null) {
         return GOLIOTH_ERR_NULL;
     }
     return status;
@@ -383,14 +514,21 @@ golioth_status_t golioth_lightdb_get_bool_sync(
 golioth_status_t golioth_lightdb_get_float_sync(
         golioth_client_t client,
         const char* path,
-        float* value) {
+        float* value,
+        int32_t timeout_s) {
     lightdb_get_response_t response = {
             .type = LIGHTDB_GET_TYPE_FLOAT,
             .f = value,
     };
     golioth_status_t status = golioth_lightdb_get_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, on_payload, &response, true);
-    if (response.is_null) {
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            on_payload,
+            &response,
+            true,
+            timeout_s);
+    if (status == GOLIOTH_OK && response.is_null) {
         return GOLIOTH_ERR_NULL;
     }
     return status;
@@ -400,15 +538,22 @@ golioth_status_t golioth_lightdb_get_string_sync(
         golioth_client_t client,
         const char* path,
         char* strbuf,
-        size_t strbuf_size) {
+        size_t strbuf_size,
+        int32_t timeout_s) {
     lightdb_get_response_t response = {
             .type = LIGHTDB_GET_TYPE_STRING,
             .strbuf = strbuf,
             .strbuf_size = strbuf_size,
     };
     golioth_status_t status = golioth_lightdb_get_internal(
-            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, on_payload, &response, true);
-    if (response.is_null) {
+            client,
+            GOLIOTH_LIGHTDB_STATE_PATH_PREFIX,
+            path,
+            on_payload,
+            &response,
+            true,
+            timeout_s);
+    if (status == GOLIOTH_OK && response.is_null) {
         return GOLIOTH_ERR_NULL;
     }
     return status;
@@ -418,94 +563,167 @@ golioth_status_t golioth_lightdb_get_json_sync(
         golioth_client_t client,
         const char* path,
         char* strbuf,
-        size_t strbuf_size) {
-    return golioth_lightdb_get_string_sync(client, path, strbuf, strbuf_size);
+        size_t strbuf_size,
+        int32_t timeout_s) {
+    return golioth_lightdb_get_string_sync(client, path, strbuf, strbuf_size, timeout_s);
 }
 
-golioth_status_t golioth_lightdb_delete_sync(golioth_client_t client, const char* path) {
-    return golioth_lightdb_delete_internal(client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, true);
+golioth_status_t golioth_lightdb_delete_sync(
+        golioth_client_t client,
+        const char* path,
+        int32_t timeout_s) {
+    return golioth_lightdb_delete_internal(
+            client, GOLIOTH_LIGHTDB_STATE_PATH_PREFIX, path, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_lightdb_stream_set_int_async(
         golioth_client_t client,
         const char* path,
-        int32_t value) {
+        int32_t value,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_int_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, value, false);
+            client,
+            GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX,
+            path,
+            value,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_stream_set_bool_async(
         golioth_client_t client,
         const char* path,
-        bool value) {
+        bool value,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_bool_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, value, false);
+            client,
+            GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX,
+            path,
+            value,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_stream_set_float_async(
         golioth_client_t client,
         const char* path,
-        float value) {
+        float value,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_float_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, value, false);
+            client,
+            GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX,
+            path,
+            value,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_stream_set_string_async(
         golioth_client_t client,
         const char* path,
         const char* str,
-        size_t str_len) {
+        size_t str_len,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_string_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, str, str_len, false);
+            client,
+            GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX,
+            path,
+            str,
+            str_len,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_stream_set_json_async(
         golioth_client_t client,
         const char* path,
         const char* json_str,
-        size_t json_str_len) {
+        size_t json_str_len,
+        golioth_set_cb_fn callback,
+        void* callback_arg) {
     return golioth_lightdb_set_json_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, json_str, json_str_len, false);
+            client,
+            GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX,
+            path,
+            json_str,
+            json_str_len,
+            false,
+            GOLIOTH_WAIT_FOREVER,
+            callback,
+            callback_arg);
 }
 
 golioth_status_t golioth_lightdb_stream_set_int_sync(
         golioth_client_t client,
         const char* path,
-        int32_t value) {
+        int32_t value,
+        int32_t timeout_s) {
     return golioth_lightdb_set_int_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, value, true);
+            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, value, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_lightdb_stream_set_bool_sync(
         golioth_client_t client,
         const char* path,
-        bool value) {
+        bool value,
+        int32_t timeout_s) {
     return golioth_lightdb_set_bool_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, value, true);
+            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, value, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_lightdb_stream_set_float_sync(
         golioth_client_t client,
         const char* path,
-        float value) {
+        float value,
+        int32_t timeout_s) {
     return golioth_lightdb_set_float_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, value, true);
+            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, value, true, timeout_s, NULL, NULL);
 }
 
 golioth_status_t golioth_lightdb_stream_set_string_sync(
         golioth_client_t client,
         const char* path,
         const char* str,
-        size_t str_len) {
+        size_t str_len,
+        int32_t timeout_s) {
     return golioth_lightdb_set_string_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, str, str_len, true);
+            client,
+            GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX,
+            path,
+            str,
+            str_len,
+            true,
+            timeout_s,
+            NULL,
+            NULL);
 }
 
 golioth_status_t golioth_lightdb_stream_set_json_sync(
         golioth_client_t client,
         const char* path,
         const char* json_str,
-        size_t json_str_len) {
+        size_t json_str_len,
+        int32_t timeout_s) {
     return golioth_lightdb_set_json_internal(
-            client, GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX, path, json_str, json_str_len, true);
+            client,
+            GOLIOTH_LIGHTDB_STREAM_PATH_PREFIX,
+            path,
+            json_str,
+            json_str_len,
+            true,
+            timeout_s,
+            NULL,
+            NULL);
 }

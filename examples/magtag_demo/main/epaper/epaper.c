@@ -33,7 +33,7 @@
 #include "epaper.h"
 #include "epaper_priv.h"
 #include "board.h"
-#include "time.h"
+#include "golioth_time.h"
 #include "EPD_2in9d.h"
 #include "ImageData.h"
 
@@ -110,7 +110,7 @@ void epaper_init(void) {
     ESP_LOGI(TAG, "ePaper Init and Clear");
     EPD_2IN9D_Init();
     EPD_2IN9D_Clear();
-    delay_ms(500);
+    golioth_time_delay_ms(500);
 
     ESP_LOGI(TAG, "Show Golioth logo");
     EPD_2IN9D_Display(

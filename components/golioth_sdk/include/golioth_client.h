@@ -9,31 +9,58 @@
 #include <stdlib.h>
 #include "golioth_status.h"
 
-// Opaque handle to the Golioth client
+/// @defgroup golioth_client golioth_client
+/// Functions for creating a Golioth client and managing client lifetime.
+/// @{
+
+/// @brief Opaque handle to the Golioth client
 typedef void* golioth_client_t;
 
+/// Golioth client events
 typedef enum {
+    /// Client was previously not connected, and is now connected
     GOLIOTH_CLIENT_EVENT_CONNECTED,
+    /// Client was previously connected, and is now disconnected
     GOLIOTH_CLIENT_EVENT_DISCONNECTED,
 } golioth_client_event_t;
 
+/// Response status and CoAP class/code
 typedef struct {
-    // One of:
-    //      GOLIOTH_ERR_TIMEOUT (no response received from server)
-    //      GOLIOTH_OK (2.XX)
-    //      GOLIOTH_ERR_FAIL (anything other than 2.XX)
+    /// Status to indicate whether a response was received
+    ///
+    /// One of:
+    ///      GOLIOTH_ERR_TIMEOUT (no response received from server)
+    ///      GOLIOTH_OK (2.XX)
+    ///      GOLIOTH_ERR_FAIL (anything other than 2.XX)
     golioth_status_t status;
-    uint8_t class;  // the 2 in 2.XX
-    uint8_t code;   // the 03 in 4.03
+    /// the 2 in 2.XX
+    uint8_t class;
+    /// the 03 in 4.03
+    uint8_t code;
 } golioth_response_t;
 
-// Callback function type for client events
+/// Callback function type for client events
+///
+/// @param client The client handle
+/// @param event The event that occurred
+/// @param arg User argument, copied from @ref golioth_client_register_event_callback. Can be NULL.
 typedef void (*golioth_client_event_cb_fn)(
         golioth_client_t client,
         golioth_client_event_t event,
         void* arg);
 
-// Callback function type for all asynchronous get/observe requests
+/// Callback function type for all asynchronous get and observe requests
+///
+/// Will be called when a response is received or on timeout (i.e. response never received).
+/// The callback function should check response->status to determine which case it is (response
+/// received or timeout).
+///
+/// @param client The client handle from the original request.
+/// @param response Response status and class/code
+/// @param path The path from the original request
+/// @param payload The application layer payload in the response packet. Can be NULL.
+/// @param payload_size The size of payload, in bytes
+/// @param arg User argument, copied from the original request. Can be NULL.
 typedef void (*golioth_get_cb_fn)(
         golioth_client_t client,
         const golioth_response_t* response,
@@ -42,25 +69,138 @@ typedef void (*golioth_get_cb_fn)(
         size_t payload_size,
         void* arg);
 
-// Callback function type for all asynchronous set/delete requests
+/// Callback function type for all asynchronous set and delete requests
+///
+/// Will be called when a response is received or on timeout (i.e. response never received).
+/// The callback function should check response->status to determine which case it is (response
+/// received or timeout). If response->status is GOLIOTH_OK, then the set or delete request
+/// was successful.
+///
+/// @param client The client handle from the original request.
+/// @param response Response status and class/code
+/// @param path The path from the original request
+/// @param arg User argument, copied from the original request. Can be NULL.
 typedef void (*golioth_set_cb_fn)(
         golioth_client_t client,
         const golioth_response_t* response,
         const char* path,
         void* arg);
 
+/// Create a Golioth client
+///
+/// Dynamically creates a client and returns an opaque handle to the client.
+/// The handle is a required parameter for most other Golioth SDK functions.
+///
+/// An RTOS task and request queue is created and the client is automatically started (no
+/// need to call @ref golioth_client_start.
+///
+/// @param psk_id Pre-shared key ID, for authentication to Golioth servers. Must be
+///     a NULL-terminated string.
+/// @param psk Pre-shared key value, for authentication to Golioth servers. Must be
+///     a NULL-terminated string.
+///
+/// @return Non-NULL The client handle (success)
+/// @return NULL There was an error creating the client
 golioth_client_t golioth_client_create(const char* psk_id, const char* psk);
-// Note: client automatically started by golioth_client_create
+
+/// Start the Golioth client
+///
+/// Does nothing if the client is already started. The client is started after calling
+/// @ref golioth_client_create.
+///
+/// @param client The client handle
+///
+/// @return GOLIOTH_OK Client started
+/// @return GOLIOTH_ERR_NULL Client handle invalid
 golioth_status_t golioth_client_start(golioth_client_t client);
+
+/// Stop the Golioth client
+///
+/// Client will finish the current request (if there is one), then enter a dormant
+/// state where no packets will be sent or received with Golioth, and the client task will be in
+/// a blocked state.
+///
+/// This function returns within 100 milliseconds, but there
+/// may be a further delay before the client task is actually stopped, depending on whether
+/// there is a pending request that needs to complete.
+///
+/// Does nothing if the client is already stopped.
+///
+/// @param client The client handle
+///
+/// @return GOLIOTH_OK Client stopped
+/// @return GOLIOTH_ERR_NULL Client handle invalid
+/// @return GOLIOTH_ERR_TIMEOUT Failed to stop
 golioth_status_t golioth_client_stop(golioth_client_t client);
-golioth_status_t golioth_client_is_running(golioth_client_t client);
+
+/// Destroy a Golioth client
+///
+/// Frees dynamically created resources from @ref golioth_client_create.
+///
+/// @param client The handle of the client to destroy
 void golioth_client_destroy(golioth_client_t client);
+
+/// Returns whether the client is currently running
+///
+/// @param client The client handle
+///
+/// @return true The client is running
+/// @return false The client is not running, or the client handle is not valid
+bool golioth_client_is_running(golioth_client_t client);
+
+/// Returns whether the client is currently connected to Golioth servers.
+///
+/// If client requests receive responses, this is the indication of being connected.
+/// If requests time out (no response from server), then the client is considered disconnected.
+///
+/// @param client The client handle
+///
+/// @return true The client is connected to Golioth
+/// @return false The client is not connected, or the client handle is not valid
 bool golioth_client_is_connected(golioth_client_t client);
 
-// Register a callback that will be called on client events (e.g. connected, disconnected)
+/// Register a callback that will be called on client events (e.g. connected, disconnected)
+///
+/// @param client The client handle
+/// @param callback Callback function to register
+/// @param arg Optional argument, forwarded directly to the callback when invoked. Can be NULL.
 void golioth_client_register_event_callback(
         golioth_client_t client,
         golioth_client_event_cb_fn callback,
         void* arg);
 
+/// How much RTOS task stack is unused by the Golioth client task, in bytes
+///
+/// Primarily intended to be used for troubleshooting and diagnosis purposes.
+///
+/// @param client The client handle
+///
+/// @return The amount of unused task stack. A value of 0 would mean stack overflow.
 uint32_t golioth_client_task_stack_min_remaining(golioth_client_t client);
+
+/// The number of items currently in the client task request queue.
+///
+/// Will be a number between 0 and GOLIOTH_COAP_REQUEST_QUEUE_MAX_ITEMS.
+///
+/// @param client The client handle
+///
+/// @return The number of items currently in the client task request queue.
+uint32_t golioth_client_num_items_in_request_queue(golioth_client_t client);
+
+/// Simulate packet loss at a particular percentage (0 to 100).
+///
+/// Intended for testing and troubleshooting in packet loss scenarios.
+/// Does nothing if percent is outside of the range [0, 100].
+///
+/// @param percent Percent packet loss (0 is no packets lost, 100 is all packets lost)
+void golioth_client_set_packet_loss_percent(uint8_t percent);
+
+/// Return whether there exists an allocated resource that has not been freed by the client.
+///
+/// Intended only for Golioth SDK developers, for test and debug purposes.
+///
+/// @return true There is at least one allocation leak (turn on debug logs to see which ones)
+/// @return false There are no allocation leaks
+bool golioth_client_has_allocation_leaks(void);
+
+/// @}

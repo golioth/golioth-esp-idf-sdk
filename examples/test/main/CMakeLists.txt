@@ -5,9 +5,7 @@ idf_component_register(
         "app_main.c"
         "../../common/wifi.c"
         "../../common/nvs.c"
-        "../../common/time.c"
         "../../common/shell.c"
-        "../../common/fw_update.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "console"
@@ -16,6 +14,8 @@ idf_component_register(
         "json"
         "app_update"
         "unity"
+        "driver"
+        "esp_hw_support"
 )
 list(APPEND EXTRA_C_FLAGS_LIST
     -Werror

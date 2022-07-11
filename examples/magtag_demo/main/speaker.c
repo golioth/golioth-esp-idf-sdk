@@ -1,5 +1,5 @@
 #include "speaker.h"
-#include "time.h"
+#include "golioth_time.h"
 #include <driver/dac.h>
 
 #define DAC_CHANNEL DAC_CHANNEL_1
@@ -33,9 +33,9 @@ void speaker_play_audio(const uint8_t* audio, uint32_t audio_length, uint32_t sa
     gpio_set_level(_enable_io, 1);
     dac_output_enable(DAC_CHANNEL);
 
-    uint64_t prior = micros();
+    uint64_t prior = golioth_time_micros();
     for (uint32_t i = 0; i < audio_length; i++) {
-        while ((t = micros()) - prior < usec)
+        while ((t = golioth_time_micros()) - prior < usec)
             ;
         dac_output_voltage(DAC_CHANNEL, audio[i]);
         prior = t;

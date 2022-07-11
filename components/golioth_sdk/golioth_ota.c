@@ -8,6 +8,7 @@
 #include <cJSON.h>
 #include "golioth_ota.h"
 #include "golioth_coap_client.h"
+#include "golioth_statistics.h"
 
 #define TAG "golioth_ota"
 
@@ -18,6 +19,8 @@ typedef struct {
     uint8_t* buf;
     size_t* block_nbytes;
 } block_get_output_params_t;
+
+static golioth_ota_state_t _state = GOLIOTH_OTA_STATE_IDLE;
 
 size_t golioth_ota_size_to_nblocks(size_t component_size) {
     size_t nblocks = component_size / GOLIOTH_OTA_BLOCKSIZE;
@@ -32,7 +35,7 @@ const golioth_ota_component_t* golioth_ota_find_component(
         const char* package) {
     // Scan the manifest until we find the component with matching package.
     const golioth_ota_component_t* found = NULL;
-    for (int i = 0; i < manifest->num_components; i++) {
+    for (size_t i = 0; i < manifest->num_components; i++) {
         const golioth_ota_component_t* c = &manifest->components[i];
         bool matches = (0 == strcmp(c->package, package));
         if (matches) {
@@ -57,9 +60,11 @@ golioth_status_t golioth_ota_report_state_sync(
         golioth_ota_reason_t reason,
         const char* package,
         const char* current_version,
-        const char* target_version) {
+        const char* target_version,
+        int32_t timeout_s) {
     char jsonbuf[128] = {};
     cJSON* json = cJSON_CreateObject();
+    GSTATS_INC_ALLOC("json");
     cJSON_AddNumberToObject(json, "state", state);
     cJSON_AddNumberToObject(json, "reason", reason);
     cJSON_AddStringToObject(json, "package", package);
@@ -72,7 +77,9 @@ golioth_status_t golioth_ota_report_state_sync(
     bool printed = cJSON_PrintPreallocated(json, jsonbuf, sizeof(jsonbuf) - 5, false);
     assert(printed);
     cJSON_Delete(json);
+    GSTATS_INC_FREE("json");
 
+    _state = state;
     return golioth_coap_client_set(
             client,
             GOLIOTH_OTA_COMPONENT_PATH_PREFIX,
@@ -82,22 +89,24 @@ golioth_status_t golioth_ota_report_state_sync(
             strlen(jsonbuf),
             NULL,
             NULL,
-            true);
+            true,
+            timeout_s);
 }
 
 golioth_status_t golioth_ota_payload_as_manifest(
         const uint8_t* payload,
-        size_t payload_len,
+        size_t payload_size,
         golioth_ota_manifest_t* manifest) {
     golioth_status_t ret = GOLIOTH_OK;
     memset(manifest, 0, sizeof(*manifest));
 
-    cJSON* json = cJSON_ParseWithLength((const char*)payload, payload_len);
+    cJSON* json = cJSON_ParseWithLength((const char*)payload, payload_size);
     if (!json) {
         ESP_LOGE(TAG, "Failed to parse manifest");
         ret = GOLIOTH_ERR_INVALID_FORMAT;
         goto cleanup;
     }
+    GSTATS_INC_ALLOC("json");
 
     const cJSON* seqnum = cJSON_GetObjectItemCaseSensitive(json, "sequenceNumber");
     if (!seqnum || !cJSON_IsNumber(seqnum)) {
@@ -140,6 +149,7 @@ golioth_status_t golioth_ota_payload_as_manifest(
 cleanup:
     if (json) {
         cJSON_Delete(json);
+        GSTATS_INC_FREE("json");
     }
     return ret;
 }
@@ -154,7 +164,9 @@ static void on_block_rcvd(
     assert(arg);
     assert(payload_size <= GOLIOTH_OTA_BLOCKSIZE);
 
-    // TODO - check response for errors
+    if (response->status != GOLIOTH_OK) {
+        return;
+    }
 
     block_get_output_params_t* out_params = (block_get_output_params_t*)arg;
     assert(out_params->buf);
@@ -170,7 +182,8 @@ golioth_status_t golioth_ota_get_block_sync(
         const char* version,
         size_t block_index,
         uint8_t* buf,  // must be at least GOLIOTH_OTA_BLOCKSIZE bytes
-        size_t* block_nbytes) {
+        size_t* block_nbytes,
+        int32_t timeout_s) {
     char path[CONFIG_GOLIOTH_OTA_MAX_PACKAGE_NAME_LEN + CONFIG_GOLIOTH_OTA_MAX_VERSION_LEN + 2] =
             {};
     snprintf(path, sizeof(path), "%s@%s", package, version);
@@ -189,6 +202,11 @@ golioth_status_t golioth_ota_get_block_sync(
             GOLIOTH_OTA_BLOCKSIZE,
             on_block_rcvd,
             &out_params,
-            true);
+            true,
+            timeout_s);
     return status;
+}
+
+golioth_ota_state_t golioth_ota_get_state(void) {
+    return _state;
 }

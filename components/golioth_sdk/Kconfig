@@ -29,7 +29,7 @@ config GOLIOTH_COAP_REQUEST_QUEUE_TIMEOUT_MS
 
 config GOLIOTH_COAP_REQUEST_QUEUE_MAX_ITEMS
     int "CoAP request queue max num items"
-    default 20
+    default 10
     help
         The size, in items, of the CoAP task request queue.
         If the queue is full, any attempts to queue new messages
@@ -43,7 +43,7 @@ config GOLIOTH_COAP_TASK_PRIORITY
 
 config GOLIOTH_COAP_TASK_STACK_SIZE_BYTES
     int "Golioth CoAP task stack size"
-    default 8192
+    default 4096
     help
         FreeRTOS task stack size of the Golioth CoAP task, in bytes.
 
@@ -90,5 +90,15 @@ config GOLIOTH_COAP_MAX_PATH_LEN
     help
         Maximum length of a CoAP path (everything after
         "coaps://coap.golioth.io/").
+
+config GOLIOTH_ALLOCATION_TRACKING
+    int "Monitor for memory leaks"
+    default 0
+    help
+        Enables tracking and instrumentation for resource
+        allocations. Primarily intended for developers of the
+        Golioth SDK itself. Will use extra RAM and CPU for
+        tracking the allocations, so it's not recommended for
+        use in production firmware images (only use for test/debug).
 
 endmenu
