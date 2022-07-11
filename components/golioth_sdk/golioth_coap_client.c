@@ -885,6 +885,8 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
         }
     }
 
+    new_client->is_running = true;
+
     return (golioth_client_t)new_client;
 
 error:
