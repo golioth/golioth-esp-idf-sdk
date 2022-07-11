@@ -10,12 +10,34 @@
 #include "golioth_rpc.h"
 #include "golioth_util.h"
 #include "golioth_time.h"
+#include "golioth_statistics.h"
 
 #define TAG "golioth_rpc"
 
-#define GOLIOTH_RPC_PATH_PREFIX ".rpc/"
+// Request:
+//
+// {
+//      "id": "id_string,
+//      "method": "method_name_string",
+//      "params": [...]
+// }
+//
+// Response:
+//
+// {
+//      "id": "id_string",
+//      "statusCode": integer,
+//      "detail": {...}
+// }
 
+// Feature flag, to enable/disable the RPC feature. Comment out to disable feature.
+// #define GOLIOTH_RPC_FEATURE_ENABLE
+
+#ifdef GOLIOTH_RPC_FEATURE_ENABLE
+
+#define GOLIOTH_RPC_PATH_PREFIX ".rpc/"
 #define MAX_RPC_CALLBACKS 8
+
 static golioth_rpc_cb_fn _rpc_callbacks[MAX_RPC_CALLBACKS];
 static const char* _rpc_callback_methods[MAX_RPC_CALLBACKS];
 static int _num_registered_rpc_callbacks;
@@ -25,10 +47,9 @@ static golioth_status_t golioth_rpc_ack_internal(
         const char* call_id,
         golioth_rpc_status_t status_code,
         uint8_t* detail,
-        size_t detail_size,
-        bool is_synchronous) {
+        size_t detail_len) {
     char buf[256] = {};
-    if (detail_size > 0) {
+    if (detail_len > 0) {
         snprintf(
                 buf,
                 sizeof(buf),
@@ -48,26 +69,8 @@ static golioth_status_t golioth_rpc_ack_internal(
             strlen(buf),
             NULL,
             NULL,
-            is_synchronous,
+            false,
             GOLIOTH_WAIT_FOREVER);
-}
-
-golioth_status_t golioth_rpc_ack_async(
-        golioth_client_t client,
-        const char* call_id,
-        golioth_rpc_status_t status_code,
-        uint8_t* detail,
-        size_t detail_size) {
-    return golioth_rpc_ack_internal(client, call_id, status_code, detail, detail_size, false);
-}
-
-golioth_status_t golioth_rpc_ack_sync(
-        golioth_client_t client,
-        const char* call_id,
-        golioth_rpc_status_t status_code,
-        uint8_t* detail,
-        size_t detail_size) {
-    return golioth_rpc_ack_internal(client, call_id, status_code, detail, detail_size, true);
 }
 
 static void on_rpc(
@@ -77,12 +80,19 @@ static void on_rpc(
         const uint8_t* payload,
         size_t payload_size,
         void* arg) {
+    if (payload_size == 0 || payload[0] != '{') {
+        // Ignore anything that is clearly not JSON
+        return;
+    }
+
+    ESP_LOG_BUFFER_HEXDUMP(TAG, payload, min(64, payload_size), ESP_LOG_DEBUG);
 
     cJSON* json = cJSON_ParseWithLength((const char*)payload, payload_size);
     if (!json) {
         ESP_LOGE(TAG, "Failed to parse rpc call");
         goto cleanup;
     }
+    GSTATS_INC_ALLOC("on_rpc_json");
 
     const cJSON* rpc_call_id = cJSON_GetObjectItemCaseSensitive(json, "id");
     if (!rpc_call_id || !cJSON_IsString(rpc_call_id)) {
@@ -103,28 +113,27 @@ static void on_rpc(
     }
 
     uint8_t detail[64] = {};
-    // TODO(fix): copy path internally on the SDK
-    static char call_id[64] = {};
-    strncpy(call_id, rpc_call_id->valuestring, 64);
-    ESP_LOGI(TAG, "Calling RPC callback for call id :%s", call_id);
+    const char* call_id = rpc_call_id->valuestring;
+    ESP_LOGD(TAG, "Calling RPC callback for call id :%s", call_id);
     bool method_found = false;
     for (int i = 0; i < _num_registered_rpc_callbacks; i++) {
         if (strcmp(_rpc_callback_methods[i], rpc_method->valuestring) == 0) {
             method_found = true;
             golioth_rpc_status_t status =
-                    _rpc_callbacks[i](client, rpc_method->valuestring, params, detail, 64);
-            ESP_LOGI(TAG, "RPC status code %d for call id :%s", status, call_id);
-            golioth_rpc_ack_async(client, call_id, status, detail, strlen((const char*)detail));
+                    _rpc_callbacks[i](rpc_method->valuestring, params, detail, sizeof(detail) - 1);
+            ESP_LOGD(TAG, "RPC status code %d for call id :%s", status, call_id);
+            golioth_rpc_ack_internal(client, call_id, status, detail, strlen((const char*)detail));
             break;
         }
     }
     if (!method_found) {
-        golioth_rpc_ack_async(client, call_id, RPC_UNAVAILABLE, detail, 0);
+        golioth_rpc_ack_internal(client, call_id, RPC_UNAVAILABLE, detail, 0);
     }
 
 cleanup:
     if (json) {
         cJSON_Delete(json);
+        GSTATS_INC_FREE("on_rpc_json");
     }
 }
 
@@ -142,3 +151,11 @@ golioth_status_t golioth_rpc_register(
     _num_registered_rpc_callbacks++;
     return GOLIOTH_OK;
 }
+#else
+golioth_status_t golioth_rpc_register(
+        golioth_client_t client,
+        const char* method,
+        golioth_rpc_cb_fn callback) {
+    return GOLIOTH_ERR_NOT_IMPLEMENTED;
+}
+#endif  // GOLIOTH_RPC_FEATURE_ENABLE

@@ -66,6 +66,19 @@ static void on_my_setting(
     golioth_lightdb_delete_async(client, path, NULL, NULL);
 }
 
+static golioth_rpc_status_t on_double(
+        const char* method,
+        const cJSON* params,
+        uint8_t* detail,
+        size_t detail_size) {
+    if (cJSON_GetArraySize(params) != 1) {
+        return RPC_INVALID_ARGUMENT;
+    }
+    int num_to_double = cJSON_GetArrayItem(params, 0)->valueint;
+    snprintf((char*)detail, detail_size, "{ \"value\": %d }", 2 * num_to_double);
+    return RPC_OK;
+}
+
 void app_main(void) {
     // Initialize NVS first. For this example, it is assumed that WiFi and Golioth
     // PSK credentials are stored in NVS.
@@ -139,7 +152,7 @@ void app_main(void) {
     // We'll check the return code to know whether a timeout happened.
     //
     // Any function provided by this SDK ending in _sync will have the same meaning.
-    golioth_status_t status = golioth_log_warn_sync(client, "app_main", "Sync log", 2);
+    golioth_status_t status = golioth_log_warn_sync(client, "app_main", "Sync log", 5);
     if (status != GOLIOTH_OK) {
         ESP_LOGE(TAG, "Error in golioth_log_warn_sync: %s", golioth_status_to_str(status));
     }
@@ -154,14 +167,14 @@ void app_main(void) {
     // There are a number of different functions you can call to get and set values in
     // LightDB state, based on the type of value (e.g. int, bool, float, string, JSON).
     golioth_lightdb_set_int_async(client, "my_int", 42, NULL, NULL);
-    status = golioth_lightdb_set_string_sync(client, "my_string", "asdf", 4, 2);
+    status = golioth_lightdb_set_string_sync(client, "my_string", "asdf", 4, 5);
     if (status != GOLIOTH_OK) {
         ESP_LOGE(TAG, "Error setting string: %s", golioth_status_to_str(status));
     }
 
     // Read back the integer we set above
     int32_t readback_int = 0;
-    status = golioth_lightdb_get_int_sync(client, "my_int", &readback_int, 2);
+    status = golioth_lightdb_get_int_sync(client, "my_int", &readback_int, 5);
     if (status == GOLIOTH_OK) {
         ESP_LOGI(TAG, "Synchronously got my_int = %d", readback_int);
     } else {
@@ -189,6 +202,13 @@ void app_main(void) {
 
     // LightDB stream functions are nearly identical to LightDB state.
     golioth_lightdb_stream_set_int_async(client, "my_stream_int", 15, NULL, NULL);
+
+    // We can register Remote Procedure Call (RPC) methods. RPCs allow
+    // remote users to "call a function" on the device.
+    //
+    // In this case, the device provides a "double" method, which takes an integer input param,
+    // doubles it, then returns the resulting value.
+    golioth_rpc_register(client, "double", on_double);
 
     // Now we'll just sit in a loop and update a LightDB state variable every
     // once in a while.

@@ -9,6 +9,11 @@
 #include "golioth_status.h"
 #include "golioth_client.h"
 
+/// @defgroup golioth_rpc golioth_rpc
+/// Functions for interacting with the Golioth Remote Procedure Call service
+/// @{
+
+/// Enumeration of RPC status codes, sent in the RPC response
 typedef enum {
     RPC_OK = 0,
     RPC_CANCELED = 1,
@@ -29,16 +34,56 @@ typedef enum {
     RPC_UNAUTHENTICATED = 16,
 } golioth_rpc_status_t;
 
-// Callback function type for remote procedure call
+/// Callback function type for remote procedure call
+///
+/// Example of a callback function that implements the "double" method, which
+/// takes one integer parameter, and doubles it:
+///
+/// @code{.c}
+/// static golioth_rpc_status_t on_double(
+///         const char* method,
+///         const cJSON* params,
+///         uint8_t* detail,
+///         size_t detail_size) {
+///     if (cJSON_GetArraySize(params) != 1) {
+///         return RPC_INVALID_ARGUMENT;
+///     }
+///     int num_to_double = cJSON_GetArrayItem(params, 0)->valueint;
+///     snprintf((char*)detail, detail_size, "{ \"value\": %d }", 2 * num_to_double);
+///     return RPC_OK;
+/// }
+/// @endcode
+///
+/// @param method The RPC method name, NULL-terminated
+/// @param params A cJSON* handle of the "params" array. Callback functions
+///         can use cJSON_GetArrayItem(params, index)->valueX to extract individual
+///         parameters.
+/// @param detail Output buffer for additional JSON detail (optional).
+///         Can be populated with string-encoded JSON to return one or more
+///         values from the method.
+/// @param detail_size Size of the detail buffer, in bytes
+///
+/// @return RPC_OK - if method was called successfully
+/// @return RPC_INVALID_ARGUMENT - if params were invalid
+/// @return otherwise - method failure
 typedef golioth_rpc_status_t (*golioth_rpc_cb_fn)(
-        golioth_client_t client,
         const char* method,
         const cJSON* params,
         uint8_t* detail,
         size_t detail_size);
 
-// clang-format off
+/// Register an RPC method
+///
+/// @param client Golioth client handle
+/// @param method The name of the method to register
+/// @param callback The callback to be invoked, when an RPC request with matching method name
+///         is received by the client.
+///
+/// @return GOLIOTH_OK - RPC method successfully registered
+/// @return otherwise - Error registering RPC method
+golioth_status_t golioth_rpc_register(
+        golioth_client_t client,
+        const char* method,
+        golioth_rpc_cb_fn callback);
 
-golioth_status_t golioth_rpc_register(golioth_client_t client, const char* method, golioth_rpc_cb_fn callback);
-
-//clang-format on
+/// @}
