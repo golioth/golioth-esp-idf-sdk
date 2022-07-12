@@ -101,4 +101,11 @@ config GOLIOTH_ALLOCATION_TRACKING
         tracking the allocations, so it's not recommended for
         use in production firmware images (only use for test/debug).
 
+config GOLIOTH_RPC_ENABLE
+    int "Enable/disable for Remote Procedure Call feature"
+    default 0
+    help
+        Feature flag for Remote Procedure Call (RPC). 0 for disabled, 1 for enabled.
+
+
 endmenu

@@ -30,10 +30,7 @@
 //      "detail": {...}
 // }
 
-// Feature flag, to enable/disable the RPC feature. Comment out to disable feature.
-// #define GOLIOTH_RPC_FEATURE_ENABLE
-
-#ifdef GOLIOTH_RPC_FEATURE_ENABLE
+#if (CONFIG_GOLIOTH_RPC_ENABLE == 1)
 
 #define GOLIOTH_RPC_PATH_PREFIX ".rpc/"
 #define MAX_RPC_CALLBACKS 8
@@ -151,11 +148,13 @@ golioth_status_t golioth_rpc_register(
     _num_registered_rpc_callbacks++;
     return GOLIOTH_OK;
 }
-#else
+#else  // CONFIG_GOLIOTH_RPC_ENABLE
+
 golioth_status_t golioth_rpc_register(
         golioth_client_t client,
         const char* method,
         golioth_rpc_cb_fn callback) {
     return GOLIOTH_ERR_NOT_IMPLEMENTED;
 }
-#endif  // GOLIOTH_RPC_FEATURE_ENABLE
+
+#endif  // CONFIG_GOLIOTH_RPC_ENABLE
