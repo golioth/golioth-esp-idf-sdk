@@ -33,11 +33,15 @@
 #if (CONFIG_GOLIOTH_RPC_ENABLE == 1)
 
 #define GOLIOTH_RPC_PATH_PREFIX ".rpc/"
-#define MAX_RPC_CALLBACKS 8
 
-static golioth_rpc_cb_fn _rpc_callbacks[MAX_RPC_CALLBACKS];
-static const char* _rpc_callback_methods[MAX_RPC_CALLBACKS];
-static int _num_registered_rpc_callbacks;
+typedef struct {
+    const char* method;
+    golioth_rpc_cb_fn callback;
+    void* callback_arg;
+} golioth_rpc_t;
+
+static golioth_rpc_t _rpcs[CONFIG_GOLIOTH_RPC_MAX_NUM_METHODS];
+static int _num_rpcs;
 
 static golioth_status_t golioth_rpc_ack_internal(
         golioth_client_t client,
@@ -112,12 +116,18 @@ static void on_rpc(
     uint8_t detail[64] = {};
     const char* call_id = rpc_call_id->valuestring;
     ESP_LOGD(TAG, "Calling RPC callback for call id :%s", call_id);
+
     bool method_found = false;
-    for (int i = 0; i < _num_registered_rpc_callbacks; i++) {
-        if (strcmp(_rpc_callback_methods[i], rpc_method->valuestring) == 0) {
+    for (int i = 0; i < _num_rpcs; i++) {
+        const golioth_rpc_t* rpc = &_rpcs[i];
+        if (strcmp(rpc->method, rpc_method->valuestring) == 0) {
             method_found = true;
-            golioth_rpc_status_t status =
-                    _rpc_callbacks[i](rpc_method->valuestring, params, detail, sizeof(detail) - 1);
+            golioth_rpc_status_t status = rpc->callback(
+                    rpc_method->valuestring,
+                    params,
+                    detail,
+                    sizeof(detail) - 1,  // -1 to ensure it's NULL-terminated
+                    rpc->callback_arg);
             ESP_LOGD(TAG, "RPC status code %d for call id :%s", status, call_id);
             golioth_rpc_ack_internal(client, call_id, status, detail, strlen((const char*)detail));
             break;
@@ -137,15 +147,27 @@ cleanup:
 golioth_status_t golioth_rpc_register(
         golioth_client_t client,
         const char* method,
-        golioth_rpc_cb_fn callback) {
-    _rpc_callbacks[_num_registered_rpc_callbacks] = callback;
-    _rpc_callback_methods[_num_registered_rpc_callbacks] = method;
-    if (_num_registered_rpc_callbacks == 0) {
-        _num_registered_rpc_callbacks++;
+        golioth_rpc_cb_fn callback,
+        void* callback_arg) {
+    if (_num_rpcs >= CONFIG_GOLIOTH_RPC_MAX_NUM_METHODS) {
+        ESP_LOGE(
+                TAG,
+                "Unable to register, can't register more than %d methods",
+                CONFIG_GOLIOTH_RPC_MAX_NUM_METHODS);
+        return GOLIOTH_ERR_MEM_ALLOC;
+    }
+
+    golioth_rpc_t* rpc = &_rpcs[_num_rpcs];
+
+    rpc->method = method;
+    rpc->callback = callback;
+    rpc->callback_arg = callback_arg;
+
+    _num_rpcs++;
+    if (_num_rpcs == 1) {
         return golioth_coap_client_observe_async(
                 client, GOLIOTH_RPC_PATH_PREFIX, "", COAP_MEDIATYPE_APPLICATION_JSON, on_rpc, NULL);
     }
-    _num_registered_rpc_callbacks++;
     return GOLIOTH_OK;
 }
 #else  // CONFIG_GOLIOTH_RPC_ENABLE
@@ -153,7 +175,8 @@ golioth_status_t golioth_rpc_register(
 golioth_status_t golioth_rpc_register(
         golioth_client_t client,
         const char* method,
-        golioth_rpc_cb_fn callback) {
+        golioth_rpc_cb_fn callback,
+        void* callback_arg) {
     return GOLIOTH_ERR_NOT_IMPLEMENTED;
 }
 

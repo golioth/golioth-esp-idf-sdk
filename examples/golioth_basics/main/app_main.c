@@ -70,7 +70,8 @@ static golioth_rpc_status_t on_double(
         const char* method,
         const cJSON* params,
         uint8_t* detail,
-        size_t detail_size) {
+        size_t detail_size,
+        void* callback_arg) {
     if (cJSON_GetArraySize(params) != 1) {
         return RPC_INVALID_ARGUMENT;
     }
@@ -208,7 +209,7 @@ void app_main(void) {
     //
     // In this case, the device provides a "double" method, which takes an integer input param,
     // doubles it, then returns the resulting value.
-    golioth_rpc_register(client, "double", on_double);
+    golioth_rpc_register(client, "double", on_double, NULL);
 
     // Now we'll just sit in a loop and update a LightDB state variable every
     // once in a while.
