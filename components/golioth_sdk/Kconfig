@@ -91,6 +91,19 @@ config GOLIOTH_COAP_MAX_PATH_LEN
         Maximum length of a CoAP path (everything after
         "coaps://coap.golioth.io/").
 
+config GOLIOTH_RPC_ENABLE
+    int "Enable/disable for Remote Procedure Call feature"
+    default 0
+    help
+        Feature flag for Remote Procedure Call (RPC). 0 for disabled, 1 for enabled.
+
+config GOLIOTH_RPC_MAX_NUM_METHODS
+    int "Maximum number of registered Golioth RPC methods"
+    default 8
+    help
+        Maximum number of Golioth Remote Procedure Call methods that can
+        be registered.
+
 config GOLIOTH_ALLOCATION_TRACKING
     int "Monitor for memory leaks"
     default 0
@@ -100,12 +113,5 @@ config GOLIOTH_ALLOCATION_TRACKING
         Golioth SDK itself. Will use extra RAM and CPU for
         tracking the allocations, so it's not recommended for
         use in production firmware images (only use for test/debug).
-
-config GOLIOTH_RPC_ENABLE
-    int "Enable/disable for Remote Procedure Call feature"
-    default 0
-    help
-        Feature flag for Remote Procedure Call (RPC). 0 for disabled, 1 for enabled.
-
 
 endmenu

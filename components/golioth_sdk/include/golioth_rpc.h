@@ -44,7 +44,8 @@ typedef enum {
 ///         const char* method,
 ///         const cJSON* params,
 ///         uint8_t* detail,
-///         size_t detail_size) {
+///         size_t detail_size,
+///         void* callback_arg) {
 ///     if (cJSON_GetArraySize(params) != 1) {
 ///         return RPC_INVALID_ARGUMENT;
 ///     }
@@ -62,6 +63,7 @@ typedef enum {
 ///         Can be populated with string-encoded JSON to return one or more
 ///         values from the method.
 /// @param detail_size Size of the detail buffer, in bytes
+/// @param callback_arg callback_arg, unchanged from callback_arg of @ref golioth_rpc_register
 ///
 /// @return RPC_OK - if method was called successfully
 /// @return RPC_INVALID_ARGUMENT - if params were invalid
@@ -70,7 +72,8 @@ typedef golioth_rpc_status_t (*golioth_rpc_cb_fn)(
         const char* method,
         const cJSON* params,
         uint8_t* detail,
-        size_t detail_size);
+        size_t detail_size,
+        void* callback_arg);
 
 /// Register an RPC method
 ///
@@ -78,12 +81,14 @@ typedef golioth_rpc_status_t (*golioth_rpc_cb_fn)(
 /// @param method The name of the method to register
 /// @param callback The callback to be invoked, when an RPC request with matching method name
 ///         is received by the client.
+/// @param callback_arg User data forwarded to callback when invoked. Optional, can be NULL.
 ///
 /// @return GOLIOTH_OK - RPC method successfully registered
 /// @return otherwise - Error registering RPC method
 golioth_status_t golioth_rpc_register(
         golioth_client_t client,
         const char* method,
-        golioth_rpc_cb_fn callback);
+        golioth_rpc_cb_fn callback,
+        void* callback_arg);
 
 /// @}
