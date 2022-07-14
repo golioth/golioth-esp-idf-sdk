@@ -31,6 +31,23 @@ cd examples/magtag_demo
 idf.py build
 ```
 
+## Known issues
+
+Newer versions of the ESP-IDF may fail at build time with the following message:
+
+```sh
+#warning "The legacy RMT driver is deprecated, please use driver/rmt_tx.h and/or driver/rmt_rx.h" [-Werror=cpp]
+```
+
+To successfully build the project, suppress the warning by adding this line to
+`skdconfig.defaults` or using menuconfig:
+
+```sh
+CONFIG_RMT_SUPPRESS_DEPRECATE_WARN=y
+```
+
+After making this change, remove the `sdkconfig` file and rebuild the project.
+
 ## Flash
 
 On the magtag board, put the ESP32 into bootloader mode so it can
