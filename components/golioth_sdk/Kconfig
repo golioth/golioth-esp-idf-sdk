@@ -97,6 +97,12 @@ config GOLIOTH_RPC_ENABLE
     help
         Feature flag for Remote Procedure Call (RPC). 0 for disabled, 1 for enabled.
 
+config GOLIOTH_SETTINGS_ENABLE
+    int "Enable/disable for Settings feature"
+    default 0
+    help
+        Feature flag for Settings. 0 for disabled, 1 for enabled.
+
 config GOLIOTH_RPC_MAX_NUM_METHODS
     int "Maximum number of registered Golioth RPC methods"
     default 8

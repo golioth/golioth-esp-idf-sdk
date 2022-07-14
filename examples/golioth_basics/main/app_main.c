@@ -14,8 +14,14 @@
 
 #define TAG "golioth_example"
 
+// Current firmware version
 static const char* _current_version = "1.2.3";
-int32_t _my_setting = 0;
+
+// Configurable via LightDB State at path "desired/my_config"
+int32_t _my_config = 0;
+
+// Configurable via Settings service, key = "LOOP_DELAY_MS"
+int32_t _loop_delay_ms = 10000;
 
 static void on_client_event(golioth_client_t client, golioth_client_event_t event, void* arg) {
     ESP_LOGI(
@@ -43,8 +49,8 @@ static void on_get_my_int(
     ESP_LOGI(TAG, "Callback got my_int = %d", value);
 }
 
-// Callback function for asynchronous observation of LightDB path "desired/my_int"
-static void on_my_setting(
+// Callback function for asynchronous observation of LightDB path "desired/my_config"
+static void on_my_config(
         golioth_client_t client,
         const golioth_response_t* response,
         const char* path,
@@ -55,14 +61,14 @@ static void on_my_setting(
         return;
     }
 
-    // Payload might be null if desired/my_setting is deleted, so ignore that case
+    // Payload might be null if desired/my_config is deleted, so ignore that case
     if (golioth_payload_is_null(payload, payload_size)) {
         return;
     }
 
     int32_t desired_value = golioth_payload_as_int(payload, payload_size);
     ESP_LOGI(TAG, "Cloud desires %s = %d. Setting now.", path, desired_value);
-    _my_setting = desired_value;
+    _my_config = desired_value;
     golioth_lightdb_delete_async(client, path, NULL, NULL);
 }
 
@@ -78,6 +84,32 @@ static golioth_rpc_status_t on_double(
     int num_to_double = cJSON_GetArrayItem(params, 0)->valueint;
     snprintf((char*)detail, detail_size, "{ \"value\": %d }", 2 * num_to_double);
     return RPC_OK;
+}
+
+static golioth_settings_status_t on_setting(
+        const char* key,
+        const golioth_settings_value_t* value) {
+    ESP_LOGD(TAG, "Received setting: key = %s, type = %d", key, value->type);
+
+    if (0 == strcmp(key, "LOOP_DELAY_MS")) {
+        // This setting is expected to be an int, return an error if it's not
+        if (value->type != GOLIOTH_SETTINGS_VALUE_TYPE_INT) {
+            return GOLIOTH_SETTINGS_VALUE_FORMAT_NOT_VALID;
+        }
+
+        // This setting must be in range [1000, 100000], return an error if it's not
+        if (value->i32 < 1000 || value->i32 > 100000) {
+            return GOLIOTH_SETTINGS_VALUE_OUTSIDE_RANGE;
+        }
+
+        // Setting has passed all checks, so apply it to the loop delay
+        ESP_LOGI(TAG, "Setting loop delay to %d ms", value->i32);
+        _loop_delay_ms = value->i32;
+        return GOLIOTH_SETTINGS_SUCCESS;
+    }
+
+    // If the setting is not recognized, we should return an error
+    return GOLIOTH_SETTINGS_KEY_NOT_RECOGNIZED;
 }
 
 void app_main(void) {
@@ -191,15 +223,15 @@ void app_main(void) {
     //
     // This can be used to implement the "digital twin" concept that is common in IoT.
     //
-    // In this case, we will observe the path desired/my_setting for changes.
+    // In this case, we will observe the path desired/my_config for changes.
     // The callback will read the value, update it locally, then delete the path
     // to indicate that the desired state was processed (the "twins" should be
     // in sync at that point).
     //
     // If you want to try this out, log into Golioth console (console.golioth.io),
-    // go to the "LightDB State" tab, and add a new item for desired/my_setting.
-    // Once set, the on_my_setting callback function should be called here.
-    golioth_lightdb_observe_async(client, "desired/my_setting", on_my_setting, NULL);
+    // go to the "LightDB State" tab, and add a new item for desired/my_config.
+    // Once set, the on_my_config callback function should be called here.
+    golioth_lightdb_observe_async(client, "desired/my_config", on_my_config, NULL);
 
     // LightDB stream functions are nearly identical to LightDB state.
     golioth_lightdb_stream_set_int_async(client, "my_stream_int", 15, NULL, NULL);
@@ -211,14 +243,23 @@ void app_main(void) {
     // doubles it, then returns the resulting value.
     golioth_rpc_register(client, "double", on_double, NULL);
 
+    // We can register a callback for persistent settings. The Settings service
+    // allows remote users to manage and push settings to devices that will
+    // be stored in device flash.
+    //
+    // When the cloud has new settings for us, the on_setting function will be called
+    // for each setting.
+    golioth_settings_register_callback(client, on_setting);
+
     // Now we'll just sit in a loop and update a LightDB state variable every
     // once in a while.
     ESP_LOGI(TAG, "Entering endless loop");
     int32_t iteration = 0;
     while (1) {
         golioth_lightdb_set_int_async(client, "iteration", iteration, NULL, NULL);
+        golioth_log_info_async(client, "app_main", "main loop", NULL, NULL);
         iteration++;
-        vTaskDelay(10000 / portTICK_PERIOD_MS);
+        vTaskDelay(_loop_delay_ms / portTICK_PERIOD_MS);
     };
 
     // That pretty much covers the basics of this SDK!
