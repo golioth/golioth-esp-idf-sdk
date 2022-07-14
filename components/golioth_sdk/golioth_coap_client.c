@@ -553,7 +553,11 @@ static golioth_status_t coap_io_loop_once(
 
     // Make sure the request isn't too old
     if (golioth_time_millis() > request_msg.ageout_ms) {
-        ESP_LOGW(TAG, "Ignoring request that has aged out, type %d", request_msg.type);
+        ESP_LOGW(
+                TAG,
+                "Ignoring request that has aged out, type %d, path %s",
+                request_msg.type,
+                (request_msg.path ? request_msg.path : "N/A"));
 
         if (request_msg.type == GOLIOTH_COAP_REQUEST_POST && request_msg.post.payload_size > 0) {
             free(request_msg.post.payload);

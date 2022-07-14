@@ -42,6 +42,7 @@ idf_component_register(
         "mbedtls"
         "app_update"
         "esp_timer"
+        "nvs_flash"
     SRCS
         "${libcoap_srcs}"
         "golioth_status.c"
@@ -52,7 +53,8 @@ idf_component_register(
         "golioth_ota.c"
         "golioth_time.c"
         "golioth_fw_update.c"
-        "golioth_statistics.c")
+        "golioth_statistics.c"
+        "golioth_settings.c")
 
 list(APPEND EXTRA_C_FLAGS_LIST -Werror)
 component_compile_options(${EXTRA_C_FLAGS_LIST})
