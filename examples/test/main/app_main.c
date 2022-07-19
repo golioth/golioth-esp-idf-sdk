@@ -170,6 +170,14 @@ static void test_lightdb_set_get_async(void) {
     TEST_ASSERT_EQUAL(2, set_async_response.class);  // success
     TEST_ASSERT_EQUAL(4, set_async_response.code);   // changed
 
+    // Delay for a bit. This is done because the value may not have been written to
+    // the database on the back end yet.
+    //
+    // The server responds before the data is written to the database ("eventually consistent"),
+    // so there's a chance that if we try to read immediately, we will get the wrong data,
+    // so we need to wait to be sure.
+    golioth_time_delay_ms(200);
+
     TEST_ASSERT_EQUAL(
             GOLIOTH_OK,
             golioth_lightdb_get_async(_client, "test_int2", on_get_test_int2, &get_async_response));
