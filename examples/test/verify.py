@@ -92,7 +92,7 @@ def run_ota_test(ser):
     ser.write('\r\n'.encode())
     wait_for_str_in_line(ser, 'esp32>')
     ser.write('start_ota\r\n'.encode())
-    wait_for_str_in_line(ser, 'State = Downloading')
+    wait_for_str_in_line(ser, 'State = Downloading', 20)
     wait_for_str_in_line(ser, 'Erasing flash')
     wait_for_str_in_line(ser, 'Received response')
 
