@@ -191,7 +191,7 @@ static int settings(int argc, char** argv) {
     } else if (0 == strcmp(command, "erase")) {
         bool success = nvs_erase_str(nvs_key);
         if (success) {
-            printf("Erased key %s from NVS", cli_key);
+            printf("Erased key %s from NVS\n", cli_key);
         }
     } else {
         printf(usage);
