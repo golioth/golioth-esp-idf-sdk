@@ -5,7 +5,7 @@ from time import time
 import re
 import json
 
-def wait_for_str_in_line(ser, str, timeout_s=10, log=True):
+def wait_for_str_in_line(ser, str, timeout_s=20, log=True):
     start_time = time()
     while True:
         line = ser.readline().decode('utf-8', errors='replace').replace("\r\n", "")
@@ -92,7 +92,7 @@ def run_ota_test(ser):
     ser.write('\r\n'.encode())
     wait_for_str_in_line(ser, 'esp32>')
     ser.write('start_ota\r\n'.encode())
-    wait_for_str_in_line(ser, 'State = Downloading', 20)
+    wait_for_str_in_line(ser, 'State = Downloading')
     wait_for_str_in_line(ser, 'Erasing flash')
     wait_for_str_in_line(ser, 'Received response')
 
