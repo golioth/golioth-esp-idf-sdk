@@ -254,11 +254,13 @@ void app_main(void) {
     // Now we'll just sit in a loop and update a LightDB state variable every
     // once in a while.
     ESP_LOGI(TAG, "Entering endless loop");
-    int32_t iteration = 0;
+    int32_t counter = 0;
+    char sbuf[21];
     while (1) {
-        golioth_lightdb_set_int_async(client, "iteration", iteration, NULL, NULL);
-        golioth_log_info_async(client, "app_main", "main loop", NULL, NULL);
-        iteration++;
+        golioth_lightdb_set_int_async(client, "counter", counter, NULL, NULL);
+        snprintf(sbuf, sizeof(sbuf), "Sending hello! %d", counter);
+        golioth_log_info_async(client, "app_main", sbuf, NULL, NULL);
+        counter++;
         vTaskDelay(_loop_delay_ms / portTICK_PERIOD_MS);
     };
 
@@ -268,7 +270,7 @@ void app_main(void) {
     // LightDB state should look something like this:
     //
     // {
-    //      "iteration": 10,
+    //      "counter": 10,
     //      "my_int": 42,
     //      "my_string": "asdf"
     // }
