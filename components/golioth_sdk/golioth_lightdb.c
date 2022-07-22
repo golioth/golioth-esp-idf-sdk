@@ -202,11 +202,21 @@ static golioth_status_t golioth_lightdb_set_json_internal(
 }
 
 int32_t golioth_payload_as_int(const uint8_t* payload, size_t payload_size) {
-    return strtol((const char*)payload, NULL, 10);
+    // Copy payload to a NULL-terminated string
+    char value[12] = {};
+    assert(payload_size <= sizeof(value));
+    memcpy(value, payload, payload_size);
+
+    return strtol(value, NULL, 10);
 }
 
 float golioth_payload_as_float(const uint8_t* payload, size_t payload_size) {
-    return strtof((const char*)payload, NULL);
+    // Copy payload to a NULL-terminated string
+    char value[32] = {};
+    assert(payload_size <= sizeof(value));
+    memcpy(value, payload, payload_size);
+
+    return strtof(value, NULL);
 }
 
 bool golioth_payload_as_bool(const uint8_t* payload, size_t payload_size) {
