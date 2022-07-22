@@ -101,7 +101,7 @@ static void test_request_dropped_if_client_not_running(void) {
 }
 
 static void test_lightdb_set_get_sync(void) {
-    int randint = rand();
+    int randint = esp_random();
     ESP_LOGD(TAG, "randint = %d", randint);
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_sync(_client, "test_int", randint, 3));
 
@@ -151,7 +151,7 @@ static void test_lightdb_set_get_async(void) {
     golioth_response_t set_async_response = {};
     golioth_response_t get_async_response = {};
 
-    int randint = rand();
+    int randint = esp_random();
     TEST_ASSERT_EQUAL(
             GOLIOTH_OK,
             golioth_lightdb_set_int_async(
@@ -301,6 +301,61 @@ static void test_client_destroy_and_no_memory_leaks(void) {
     TEST_ASSERT_FALSE(golioth_client_has_allocation_leaks());
 }
 
+static bool _on_get_test_int3_called = false;
+static int32_t _test_int3_value = 0;
+static void on_test_int3(
+        golioth_client_t client,
+        const golioth_response_t* response,
+        const char* path,
+        const uint8_t* payload,
+        size_t payload_size,
+        void* arg) {
+    ESP_LOG_BUFFER_HEXDUMP(TAG, payload, payload_size, ESP_LOG_DEBUG);
+
+    if (golioth_payload_is_null(payload, payload_size)) {
+        return;
+    }
+
+    _on_get_test_int3_called = true;
+    _test_int3_value = golioth_payload_as_int(payload, payload_size);
+}
+
+static void test_lightdb_observation(void) {
+    _on_get_test_int3_called = false;
+    TEST_ASSERT_EQUAL(
+            GOLIOTH_OK, golioth_lightdb_observe_async(_client, "test_int3", on_test_int3, NULL));
+
+    // Wait up to 3 seconds to receive the initial value from the observation.
+    //
+    // It's possible this isn't received if test_int3 doesn't exist on the server.
+    uint64_t timeout_ms = golioth_time_millis() + 3000;
+    while (golioth_time_millis() < timeout_ms) {
+        if (_on_get_test_int3_called) {
+            break;
+        }
+        golioth_time_delay_ms(100);
+    }
+
+    _on_get_test_int3_called = false;
+
+    // Set a random number on test_int3
+    int randint = esp_random();
+    ESP_LOGD(TAG, "randint = %d", randint);
+    TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_lightdb_set_int_sync(_client, "test_int3", randint, 3));
+
+    // Wait up to 3 seconds to observe the new value
+    timeout_ms = golioth_time_millis() + 3000;
+    while (golioth_time_millis() < timeout_ms) {
+        if (_on_get_test_int3_called) {
+            break;
+        }
+        golioth_time_delay_ms(100);
+    }
+
+    TEST_ASSERT_TRUE(_on_get_test_int3_called);
+    TEST_ASSERT_EQUAL(randint, _test_int3_value);
+}
+
 static int built_in_test(int argc, char** argv) {
     UNITY_BEGIN();
     RUN_TEST(test_connects_to_wifi);
@@ -315,6 +370,7 @@ static int built_in_test(int argc, char** argv) {
     }
     RUN_TEST(test_lightdb_set_get_sync);
     RUN_TEST(test_lightdb_set_get_async);
+    RUN_TEST(test_lightdb_observation);
     RUN_TEST(test_golioth_client_heap_usage);
     RUN_TEST(test_request_dropped_if_client_not_running);
     RUN_TEST(test_lightdb_error_if_path_not_found);
