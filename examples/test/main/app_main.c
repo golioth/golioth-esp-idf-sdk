@@ -97,7 +97,7 @@ static void test_request_dropped_if_client_not_running(void) {
             GOLIOTH_ERR_INVALID_STATE, golioth_lightdb_observe_async(_client, "a", NULL, NULL));
 
     TEST_ASSERT_EQUAL(GOLIOTH_OK, golioth_client_start(_client));
-    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 10000 / portTICK_PERIOD_MS));
 }
 
 static void test_lightdb_set_get_sync(void) {
@@ -255,7 +255,7 @@ static void test_request_timeout_if_packets_dropped(void) {
     golioth_client_set_packet_loss_percent(0);
 
     // Wait for connected
-    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 5000 / portTICK_PERIOD_MS));
+    TEST_ASSERT_EQUAL(pdTRUE, xSemaphoreTake(_connected_sem, 10000 / portTICK_PERIOD_MS));
 }
 
 static void test_lightdb_error_if_path_not_found(void) {
