@@ -28,7 +28,7 @@ static uint32_t _initial_free_heap;
 static bool _wifi_connected;
 
 // Note: Don't put TEST_ASSERT_* statements in client callback functions, as this
-// will cause a stack overflow in the client task is any of the assertions fail.
+// will cause a stack overflow in the client task if any of the assertions fail.
 //
 // I'm not sure exactly why this happens, but I suspect it's related to
 // Unity's UNITY_FAIL_AND_BAIL macro that gets called on failing assertions.
@@ -383,12 +383,15 @@ static int built_in_test(int argc, char** argv) {
 }
 
 static int start_ota(int argc, char** argv) {
-    test_connects_to_wifi();
+    UNITY_BEGIN();
+    RUN_TEST(test_connects_to_wifi);
     if (!_client) {
-        test_golioth_client_create();
-        test_connects_to_golioth();
+        RUN_TEST(test_golioth_client_create);
+        RUN_TEST(test_connects_to_golioth);
     }
     golioth_fw_update_init(_client, _current_version);
+    UNITY_END();
+
     return 0;
 }
 
