@@ -1,7 +1,7 @@
 # Golioth esp-idf SDK
 
 A software development kit for connecting Espressif devices to the
-[Golioth](golioth.io) IoT cloud.
+[Golioth](https://golioth.io) IoT cloud.
 
 This repo contains a runtime library and set of examples intended to build
 and run in the latest release of esp-idf
