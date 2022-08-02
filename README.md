@@ -111,3 +111,34 @@ your_project
 A complete example of using the Golioth SDK in an external project can be found here:
 
 https://github.com/golioth/golioth-esp-idf-external-app.git
+
+## Device Matrix
+
+The following table lists the different hardware configurations we test the SDK against,
+and when it was last tested.
+
+The test itself covers most major functionality of the SDK, including connecting
+to the Golioth server, interacting with LightDB State and Stream, and performing
+OTA firmware updates.
+
+The test procedure is:
+
+```
+cd examples/test
+idf.py build
+idf.py flash
+python verify.py /dev/ttyUSB0
+```
+
+The `verify.py` script will return 0 on success (all tests pass), and non-zero otherwise.
+
+The testing procedure is automated in CI/CD for the ESP32S3
+(see [test_esp32s3.yml](.github/workflows/test_esp32s3.yml)) and tested on
+every commit. Other boards will be tested in CI/CD soon (until then, they are
+being manually tested with the same procedure).
+
+| Board              | Module           | esp-idf version | Last Tested Commit    |
+| ---                | ---              | ---             | ---                   |
+| ESP32-S3-DevKitC-1 | ESP32-S3-WROOM-1 | v4.4.1          | Every commit, CI/CD   |
+| ESP32-DevKitC-32E  | ESP32-WROOM-32E  | v4.4.1          | 56944d3 (Aug 2, 2022) |
+| ESP32-C3-DevKitM-1 | ESP32-C3-MINI-1  | v4.4.1          | 56944d3 (Aug 2, 2022) |
