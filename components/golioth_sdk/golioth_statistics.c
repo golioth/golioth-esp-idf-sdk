@@ -6,6 +6,8 @@
 
 #include "golioth_statistics.h"
 #include <esp_log.h>
+#include <stdint.h>
+#include <stdlib.h>
 
 #define TAG "golioth_statistics"
 
