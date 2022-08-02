@@ -11,7 +11,7 @@ def wait_for_str_in_line(ser, str, timeout_s=20, log=True):
         line = ser.readline().decode('utf-8', errors='replace').replace("\r\n", "")
         if line != "" and log:
             print(line)
-        if "CPU halted" in line:
+        if "CPU halted" in line and not "golioth_coap_client" in line:
             raise RuntimeError(line)
         if time() - start_time > timeout_s:
             raise RuntimeError('Timeout')
