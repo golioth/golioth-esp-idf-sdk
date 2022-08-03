@@ -20,8 +20,8 @@ static const char* _current_version = "1.2.3";
 // Configurable via LightDB State at path "desired/my_config"
 int32_t _my_config = 0;
 
-// Configurable via Settings service, key = "LOOP_DELAY_MS"
-int32_t _loop_delay_ms = 10000;
+// Configurable via Settings service, key = "LOOP_DELAY_S"
+int32_t _loop_delay_s = 10;
 
 static void on_client_event(golioth_client_t client, golioth_client_event_t event, void* arg) {
     ESP_LOGI(
@@ -91,20 +91,20 @@ static golioth_settings_status_t on_setting(
         const golioth_settings_value_t* value) {
     ESP_LOGD(TAG, "Received setting: key = %s, type = %d", key, value->type);
 
-    if (0 == strcmp(key, "LOOP_DELAY_MS")) {
+    if (0 == strcmp(key, "LOOP_DELAY_S")) {
         // This setting is expected to be an int, return an error if it's not
         if (value->type != GOLIOTH_SETTINGS_VALUE_TYPE_INT) {
             return GOLIOTH_SETTINGS_VALUE_FORMAT_NOT_VALID;
         }
 
-        // This setting must be in range [1000, 100000], return an error if it's not
-        if (value->i32 < 1000 || value->i32 > 100000) {
+        // This setting must be in range [1, 100], return an error if it's not
+        if (value->i32 < 1 || value->i32 > 100) {
             return GOLIOTH_SETTINGS_VALUE_OUTSIDE_RANGE;
         }
 
         // Setting has passed all checks, so apply it to the loop delay
-        ESP_LOGI(TAG, "Setting loop delay to %d ms", value->i32);
-        _loop_delay_ms = value->i32;
+        ESP_LOGI(TAG, "Setting loop delay to %d s", value->i32);
+        _loop_delay_s = value->i32;
         return GOLIOTH_SETTINGS_SUCCESS;
     }
 
@@ -261,7 +261,7 @@ void app_main(void) {
         snprintf(sbuf, sizeof(sbuf), "Sending hello! %d", counter);
         golioth_log_info_async(client, "app_main", sbuf, NULL, NULL);
         counter++;
-        vTaskDelay(_loop_delay_ms / portTICK_PERIOD_MS);
+        vTaskDelay(_loop_delay_s * 1000 / portTICK_PERIOD_MS);
     };
 
     // That pretty much covers the basics of this SDK!
