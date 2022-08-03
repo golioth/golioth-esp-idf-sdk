@@ -93,13 +93,13 @@ config GOLIOTH_COAP_MAX_PATH_LEN
 
 config GOLIOTH_RPC_ENABLE
     int "Enable/disable for Remote Procedure Call feature"
-    default 0
+    default 1
     help
         Feature flag for Remote Procedure Call (RPC). 0 for disabled, 1 for enabled.
 
 config GOLIOTH_SETTINGS_ENABLE
     int "Enable/disable for Settings feature"
-    default 0
+    default 1
     help
         Feature flag for Settings. 0 for disabled, 1 for enabled.
 
