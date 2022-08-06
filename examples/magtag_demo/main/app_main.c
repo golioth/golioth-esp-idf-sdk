@@ -12,6 +12,8 @@
 #include "esp_log.h"
 #include "driver/gpio.h"
 #include "nvs_flash.h"
+#include "nvs.h"
+#include "shell.h"
 #include "wifi.h"
 #include "leds.h"
 #include "i2c.h"
@@ -233,7 +235,20 @@ void app_main(void) {
 
     epaper_init();
 
-    wifi_init(CONFIG_GOLIOTH_EXAMPLE_WIFI_SSID, CONFIG_GOLIOTH_EXAMPLE_WIFI_PSK);
+    nvs_init();
+    shell_start();
+
+    if (!nvs_credentials_are_set()) {
+        while (1) {
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+            ESP_LOGW(TAG, "WiFi and golioth credentials are not set");
+            ESP_LOGW(TAG, "Use the shell settings commands to set them, then restart");
+            vTaskDelay(portMAX_DELAY);
+        }
+    }
+
+    // Initialize WiFi and wait for it to connect
+    wifi_init(nvs_read_wifi_ssid(), nvs_read_wifi_password());
     wifi_wait_for_connected();
 
     set_all_leds(BLUE);
