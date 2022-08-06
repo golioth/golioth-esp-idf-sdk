@@ -14,6 +14,15 @@
 
 #define TAG "golioth_example"
 
+#define STACK_SIZE 2048
+
+ StaticTask_t xTaskBuffer;
+
+ StackType_t xStack[ STACK_SIZE ];
+
+
+golioth_client_t client;
+
 // Current firmware version
 static const char* _current_version = "1.2.3";
 
@@ -86,6 +95,43 @@ static golioth_rpc_status_t on_double(
     return RPC_OK;
 }
 
+
+void vTaskCode( void * pvParameters )
+{
+    for( ;; )
+    {
+        golioth_log_info_async(client, "app_main", "About to go boom", NULL, NULL);
+        for(uint8_t i = 10; i>0; i--)
+        {
+            ESP_LOGI(TAG, "Resetting device in %d", i);
+            vTaskDelay(1000 / portTICK_PERIOD_MS);
+
+        }
+        ESP_LOGI(TAG, "Boooooooom");
+    esp_restart();
+  }
+}
+
+
+static golioth_rpc_status_t remote_reset_esp32(
+        const char* method,
+        const cJSON* params,
+        uint8_t* detail,
+        size_t detail_size,
+        void* callback_arg) {
+      
+    if (cJSON_GetArraySize(params) != 0) {
+        return RPC_INVALID_ARGUMENT;
+    }
+    //int num_to_double = cJSON_GetArrayItem(params, 0)->valueint;
+    ESP_LOGI(TAG, "KaBoom received");
+    snprintf((char*)detail, detail_size, "{ \"value\": \"kaboom!\"}");
+    xTaskCreate( vTaskCode, "KABOOM", STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL );
+
+    golioth_log_info_async(client, "app_main", "Kaboom in 10s", NULL, NULL);
+    return RPC_OK;
+}
+
 static golioth_settings_status_t on_setting(
         const char* key,
         const golioth_settings_value_t* value) {
@@ -145,7 +191,7 @@ void app_main(void) {
     //
     // As soon as the task starts, it will try to connect to Golioth using the
     // CoAP protocol over DTLS, with the PSK ID and PSK for authentication.
-    golioth_client_t client =
+    client =
             golioth_client_create(nvs_read_golioth_psk_id(), nvs_read_golioth_psk());
     assert(client);
 
@@ -242,6 +288,7 @@ void app_main(void) {
     // In this case, the device provides a "double" method, which takes an integer input param,
     // doubles it, then returns the resulting value.
     golioth_rpc_register(client, "double", on_double, NULL);
+    golioth_rpc_register(client, "remote_reset", remote_reset_esp32, NULL);
 
     // We can register a callback for persistent settings. The Settings service
     // allows remote users to manage and push settings to devices that will
