@@ -15,10 +15,13 @@ idf_component_register(
         "epaper/epaper.c"
         "epaper/EPD_2in9d.c"
         "epaper/ImageData.c"
+        "../../common/shell.c"
         "../../common/wifi.c"
+        "../../common/nvs.c"
     PRIV_REQUIRES
         "golioth_sdk"
         "json"
+        "console"
         "nvs_flash"
         "esp_adc_cal"
 )
