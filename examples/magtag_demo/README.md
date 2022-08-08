@@ -5,25 +5,6 @@ source ~/esp/esp-idf/export.sh
 idf.py set-target esp32s2
 ```
 
-## Configure
-
-You will need to set the following config items in order
-to connect to WiFi and Golioth:
-
-```sh
-CONFIG_GOLIOTH_EXAMPLE_WIFI_SSID
-CONFIG_GOLIOTH_EXAMPLE_WIFI_PSK
-CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID
-CONFIG_GOLIOTH_EXAMPLE_COAP_PSK
-```
-
-You can set these in `sdkconfig.defaults` or use menuconfig:
-
-```sh
-cd examples/magtag_demo
-idf.py menuconfig
-```
-
 ## Build
 
 ```sh
@@ -67,13 +48,50 @@ the board into the new firmware.
 
 ## Serial monitoring
 
-The magtag board does not expose serial UART Rx/Tx over USB,
-
-However, there are test points on the board labelled `RX` and `TX`.
-So if you have a USB-to-UART adapter/cable, you can
-connect the adapter Rx wire to the `TX` test point to see
-serial output, using a serial terminal program:
+You can use the ESP-IDF monitor feature to see the serial output of the MagTag.
 
 ```sh
-minicom -D /dev/ttyUSB0 -b 115200 --color=on
+idp.py -p /dev/ttyACM0 -b monitor
 ```
+
+Exit the monitor by typing `CTRL-]`.
+
+## Configure
+
+You will need to set the WiFi and Golioth credentials so that yor device can
+connect. Access the serial shell using the serial montior mentioned above. If
+you do not see the `esp32>` prompt after connecting, try pressing enter a few
+times, or simply press the reset button on the board.
+
+From the command prompt, use the `settings set <key> <value>` syntax to set the
+following keys:
+
+* `wifi/ssid`
+* `wifi/psk`
+* `golioth/psk-id`
+* `golioth/psk`
+
+Reset the board to use the newly saved credentials. For example:
+
+```sh
+I (420) epaper: ePaper Init and Clear
+I (1220) epaper: Show Golioth logo
+
+Type 'help' to get the list of commands.
+Use UP/DOWN arrows to navigate through command history.
+Press TAB when typing command name to auto-complete.
+Press Enter or Ctrl+C will terminate the console environment.
+esp32> W (2440) magtag_demo: WiFi and golioth credentials are not set
+W (8081) magtag_demo: Use the shell settings commands to set them, then restart
+esp32>
+esp32> settings set wifi/ssid your_wifi_AP
+Setting wifi/ssid saved
+esp32> settings set wifi/psk your_wifi_password
+Setting wifi/psk saved
+esp32> settings set golioth/psk-id demo-psk-id@demo-project-name
+Setting golioth/psk-id saved
+esp32> settings set golioth/psk strong-password
+Setting golioth/psk saved
+esp32> reset
+```
+
