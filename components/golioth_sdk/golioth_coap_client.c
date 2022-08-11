@@ -41,9 +41,6 @@ typedef struct {
     size_t psk_len;
     golioth_coap_request_msg_t* pending_req;
     golioth_coap_observe_info_t observations[CONFIG_GOLIOTH_MAX_NUM_OBSERVATIONS];
-    // token to use for block GETs (must use same token for all blocks)
-    uint8_t block_token[8];
-    size_t block_token_len;
     golioth_client_event_cb_fn event_callback;
     void* event_callback_arg;
 } golioth_coap_client_t;
@@ -363,20 +360,7 @@ static void golioth_coap_get_block(
     }
     GSTATS_INC_ALLOC("get_block_pdu");
 
-    if (req->get_block.block_index == 0) {
-        // Save this token for further blocks
-        golioth_coap_add_token(req_pdu, req, session);
-        memcpy(client->block_token, req->token, req->token_len);
-        client->block_token_len = req->token_len;
-    } else {
-        coap_add_token(req_pdu, client->block_token_len, client->block_token);
-
-        // Copy block token into the current req_pdu token, since this is what
-        // is checked in coap_response_handler to verify the response has been received.
-        memcpy(req->token, client->block_token, client->block_token_len);
-        req->token_len = client->block_token_len;
-    }
-
+    golioth_coap_add_token(req_pdu, req, session);
     golioth_coap_add_path(req_pdu, req->path_prefix, req->path);
     golioth_coap_add_block2(req_pdu, req->get_block.block_index, req->get_block.block_size);
     coap_send(session, req_pdu);
