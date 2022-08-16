@@ -209,7 +209,21 @@ static void nack_handler(
         const coap_pdu_t* sent,
         const coap_nack_reason_t reason,
         const coap_mid_t id) {
-    ESP_LOGE(TAG, "Received nack reason: %d", reason);
+    switch (reason) {
+        case COAP_NACK_TOO_MANY_RETRIES:
+            ESP_LOGE(TAG, "Received nack reason: COAP_NACK_TOO_MANY_RETRIES");
+            break;
+        case COAP_NACK_NOT_DELIVERABLE:
+            ESP_LOGE(TAG, "Received nack reason: COAP_NACK_NOT_DELIVERABLE");
+            break;
+        case COAP_NACK_TLS_FAILED:
+            ESP_LOGE(TAG, "Received nack reason: COAP_NACK_TLS_FAILED");
+            // TODO - customize error message based on PSK vs cert usage
+            ESP_LOGE(TAG, "Maybe your PSK-ID or PSK is incorrect?");
+            break;
+        default:
+            ESP_LOGE(TAG, "Received nack reason: %d", reason);
+    }
 }
 
 static void coap_log_handler(coap_log_t level, const char* message) {
