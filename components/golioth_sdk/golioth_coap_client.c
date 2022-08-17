@@ -525,7 +525,7 @@ static golioth_status_t create_session(
     coap_address_t dst_addr = {};
     GOLIOTH_STATUS_RETURN_IF_ERROR(get_coap_dst_address(&host_uri, &dst_addr));
 
-    ESP_LOGI(TAG, "Start CoAP session");
+    ESP_LOGI(TAG, "Start CoAP session with host: %s", CONFIG_GOLIOTH_COAP_HOST_URI);
     char client_sni[256] = {};
     memcpy(client_sni, host_uri.host.s, MIN(host_uri.host.length, sizeof(client_sni) - 1));
     coap_dtls_cpsk_t dtls_psk = {
