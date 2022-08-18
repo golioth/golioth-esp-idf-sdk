@@ -39,6 +39,60 @@ typedef struct {
     uint8_t code;
 } golioth_response_t;
 
+/// TLS authentication type
+typedef enum {
+    /// Authenticate with pre-shared key (psk-id and psk)
+    GOLIOTH_TLS_AUTH_TYPE_PSK,
+    /// Authenticate with PKI certificates (CA cert, public client cert, private client key)
+    GOLIOTH_TLS_AUTH_TYPE_PKI,
+} golioth_tls_auth_type_t;
+
+/// Pre-Shared Key (PSK) credentials.
+///
+/// All memory is owned by user and must persist for the lifetime
+/// of the golioth client.
+typedef struct {
+    /// PSK Identifier (e.g. "devicename@projectname")
+    const char* psk_id;
+    size_t psk_id_len;
+
+    /// Pre-shared key, secret password
+    const char* psk;
+    size_t psk_len;
+} golioth_psk_credentials_t;
+
+/// Public Key Infrastructure (PKI) credentials (aka "certificates").
+///
+/// All memory is owned by user and must persist for the lifetime
+/// of the golioth client.
+typedef struct {
+    // PEM Common CA cert
+    const uint8_t* ca_cert;
+    size_t ca_cert_len;
+
+    /// PEM Public client cert
+    const uint8_t* public_cert;
+    size_t public_cert_len;
+
+    /// PEM Private client key
+    const uint8_t* private_key;
+    size_t private_key_len;
+} golioth_pki_credentials_t;
+
+/// TLS Authentication Credentials
+typedef struct {
+    golioth_tls_auth_type_t auth_type;
+    union {
+        golioth_psk_credentials_t psk;
+        golioth_pki_credentials_t pki;
+    };
+} golioth_tls_credentials_t;
+
+/// Golioth client configuration, passed into golioth_client_create
+typedef struct {
+    golioth_tls_credentials_t credentials;
+} golioth_client_config_t;
+
 /// Callback function type for client events
 ///
 /// @param client The client handle
@@ -92,16 +146,13 @@ typedef void (*golioth_set_cb_fn)(
 /// The handle is a required parameter for most other Golioth SDK functions.
 ///
 /// An RTOS task and request queue is created and the client is automatically started (no
-/// need to call @ref golioth_client_start.
+/// need to call @ref golioth_client_start).
 ///
-/// @param psk_id Pre-shared key ID, for authentication to Golioth servers. Must be
-///     a NULL-terminated string.
-/// @param psk Pre-shared key value, for authentication to Golioth servers. Must be
-///     a NULL-terminated string.
+/// @param config Client configuration
 ///
 /// @return Non-NULL The client handle (success)
 /// @return NULL There was an error creating the client
-golioth_client_t golioth_client_create(const char* psk_id, const char* psk);
+golioth_client_t golioth_client_create(const golioth_client_config_t* config);
 
 /// Start the Golioth client
 ///
