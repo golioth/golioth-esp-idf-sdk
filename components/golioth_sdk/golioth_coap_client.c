@@ -22,9 +22,6 @@
 
 static bool _initialized;
 
-#define GOLIOTH_DEFAULT_PSK_ID "unknown"
-#define GOLIOTH_DEFAULT_PSK "unknown"
-
 // This is the struct hidden by the opaque type golioth_client_t
 // TODO - document these
 typedef struct {
@@ -35,8 +32,7 @@ typedef struct {
     bool is_running;
     bool end_session;
     bool session_connected;
-    const char* psk_id;
-    size_t psk_id_len;
+    golioth_client_config_t config;
     const char* psk;
     size_t psk_len;
     golioth_coap_request_msg_t* pending_req;
@@ -506,6 +502,18 @@ static golioth_status_t create_context(golioth_coap_client_t* client, coap_conte
     return GOLIOTH_OK;
 }
 
+static int validate_cn_call_back(
+        const char* cn,
+        const uint8_t* asn1_public_cert,
+        size_t asn1_length,
+        coap_session_t* session,
+        unsigned depth,
+        int validated,
+        void* arg) {
+    ESP_LOGI(TAG, "Server Cert: Depth = %u, Len = %zu, Valid = %d", depth, asn1_length, validated);
+    return 1;
+}
+
 static golioth_status_t create_session(
         golioth_coap_client_t* client,
         coap_context_t* context,
@@ -526,17 +534,61 @@ static golioth_status_t create_session(
     GOLIOTH_STATUS_RETURN_IF_ERROR(get_coap_dst_address(&host_uri, &dst_addr));
 
     ESP_LOGI(TAG, "Start CoAP session with host: %s", CONFIG_GOLIOTH_COAP_HOST_URI);
+
     char client_sni[256] = {};
     memcpy(client_sni, host_uri.host.s, MIN(host_uri.host.length, sizeof(client_sni) - 1));
-    coap_dtls_cpsk_t dtls_psk = {
-            .version = COAP_DTLS_CPSK_SETUP_VERSION,
-            .client_sni = client_sni,
-            .psk_info.identity.s = (const uint8_t*)client->psk_id,
-            .psk_info.identity.length = client->psk_id_len,
-            .psk_info.key.s = (const uint8_t*)client->psk,
-            .psk_info.key.length = client->psk_len,
-    };
-    *session = coap_new_client_session_psk2(context, NULL, &dst_addr, COAP_PROTO_DTLS, &dtls_psk);
+
+    golioth_tls_auth_type_t auth_type = client->config.credentials.auth_type;
+
+    if (auth_type == GOLIOTH_TLS_AUTH_TYPE_PSK) {
+        golioth_psk_credentials_t psk_creds = client->config.credentials.psk;
+
+        coap_dtls_cpsk_t dtls_psk = {
+                .version = COAP_DTLS_CPSK_SETUP_VERSION,
+                .client_sni = client_sni,
+                .psk_info.identity.s = (const uint8_t*)psk_creds.psk_id,
+                .psk_info.identity.length = psk_creds.psk_id_len,
+                .psk_info.key.s = (const uint8_t*)psk_creds.psk,
+                .psk_info.key.length = psk_creds.psk_len,
+        };
+        *session =
+                coap_new_client_session_psk2(context, NULL, &dst_addr, COAP_PROTO_DTLS, &dtls_psk);
+    } else if (auth_type == GOLIOTH_TLS_AUTH_TYPE_PKI) {
+        golioth_pki_credentials_t pki_creds = client->config.credentials.pki;
+
+        coap_dtls_pki_t dtls_pki = {
+                .version = COAP_DTLS_PKI_SETUP_VERSION,
+                .verify_peer_cert = 1,
+                .check_common_ca = 1,
+                .allow_self_signed = 0,
+                .allow_expired_certs = 0,
+                .cert_chain_validation = 1,
+                .cert_chain_verify_depth = 3,
+                .check_cert_revocation = 1,
+                .allow_no_crl = 1,
+                .allow_expired_crl = 0,
+                .allow_bad_md_hash = 0,
+                .allow_short_rsa_length = 1,
+                .is_rpk_not_cert = 0,
+                .validate_cn_call_back = validate_cn_call_back,
+                .client_sni = client_sni,
+                .pki_key = {
+                        .key_type = COAP_PKI_KEY_PEM_BUF,
+                        .key.pem_buf = {
+                                .ca_cert = pki_creds.ca_cert,
+                                .ca_cert_len = pki_creds.ca_cert_len,
+                                .public_cert = pki_creds.public_cert,
+                                .public_cert_len = pki_creds.public_cert_len,
+                                .private_key = pki_creds.private_key,
+                                .private_key_len = pki_creds.private_key_len,
+                        }}};
+        *session =
+                coap_new_client_session_pki(context, NULL, &dst_addr, COAP_PROTO_DTLS, &dtls_pki);
+    } else {
+        ESP_LOGE(TAG, "Invalid TLS auth type: %d", auth_type);
+        return GOLIOTH_ERR_NOT_ALLOWED;
+    }
+
     if (!*session) {
         ESP_LOGE(TAG, "coap_new_client_session() failed");
         return GOLIOTH_ERR_MEM_ALLOC;
@@ -830,7 +882,7 @@ static void golioth_coap_client_task(void* arg) {
     GSTATS_INC_FREE("coap_task_handle");
 }
 
-golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
+golioth_client_t golioth_client_create(const golioth_client_config_t* config) {
     if (!_initialized) {
         // Connect logs from libcoap to the ESP logger
         coap_set_log_handler(coap_log_handler);
@@ -850,10 +902,7 @@ golioth_client_t golioth_client_create(const char* psk_id, const char* psk) {
     }
     GSTATS_INC_ALLOC("client");
 
-    new_client->psk_id = psk_id;
-    new_client->psk_id_len = strlen(psk_id);
-    new_client->psk = psk;
-    new_client->psk_len = strlen(psk);
+    new_client->config = *config;
 
     new_client->run_sem = xSemaphoreCreateBinary();
     if (!new_client->run_sem) {
