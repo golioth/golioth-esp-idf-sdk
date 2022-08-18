@@ -43,7 +43,7 @@ config GOLIOTH_COAP_TASK_PRIORITY
 
 config GOLIOTH_COAP_TASK_STACK_SIZE_BYTES
     int "Golioth CoAP task stack size"
-    default 4096
+    default 6144
     help
         FreeRTOS task stack size of the Golioth CoAP task, in bytes.
 
