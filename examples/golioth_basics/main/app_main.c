@@ -145,8 +145,19 @@ void app_main(void) {
     //
     // As soon as the task starts, it will try to connect to Golioth using the
     // CoAP protocol over DTLS, with the PSK ID and PSK for authentication.
-    golioth_client_t client =
-            golioth_client_create(nvs_read_golioth_psk_id(), nvs_read_golioth_psk());
+    const char* psk_id = nvs_read_golioth_psk_id();
+    const char* psk = nvs_read_golioth_psk();
+
+    golioth_client_config_t config = {
+            .credentials = {
+                    .auth_type = GOLIOTH_TLS_AUTH_TYPE_PSK,
+                    .psk = {
+                            .psk_id = psk_id,
+                            .psk_id_len = strlen(psk_id),
+                            .psk = psk,
+                            .psk_len = strlen(psk),
+                    }}};
+    golioth_client_t client = golioth_client_create(&config);
     assert(client);
 
     // Register a callback function that will be called by the client task when

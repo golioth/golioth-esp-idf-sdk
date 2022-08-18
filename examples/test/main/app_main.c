@@ -57,7 +57,20 @@ static void test_connects_to_wifi(void) {
 
 static void test_golioth_client_create(void) {
     if (!_client) {
-        _client = golioth_client_create(nvs_read_golioth_psk_id(), nvs_read_golioth_psk());
+        const char* psk_id = nvs_read_golioth_psk_id();
+        const char* psk = nvs_read_golioth_psk();
+
+        golioth_client_config_t config = {
+                .credentials = {
+                        .auth_type = GOLIOTH_TLS_AUTH_TYPE_PSK,
+                        .psk = {
+                                .psk_id = psk_id,
+                                .psk_id_len = strlen(psk_id),
+                                .psk = psk,
+                                .psk_len = strlen(psk),
+                        }}};
+        _client = golioth_client_create(&config);
+
         TEST_ASSERT_NOT_NULL(_client);
         golioth_client_register_event_callback(_client, on_client_event, NULL);
     }
