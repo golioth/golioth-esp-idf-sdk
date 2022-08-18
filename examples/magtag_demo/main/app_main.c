@@ -253,8 +253,16 @@ void app_main(void) {
 
     set_all_leds(BLUE);
 
-    golioth_client_t client = golioth_client_create(
-            CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID, CONFIG_GOLIOTH_EXAMPLE_COAP_PSK);
+    golioth_client_config_t config = {
+            .credentials = {
+                    .auth_type = GOLIOTH_TLS_AUTH_TYPE_PSK,
+                    .psk = {
+                            .psk_id = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID,
+                            .psk_id_len = strlen(CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID),
+                            .psk = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK,
+                            .psk_len = strlen(CONFIG_GOLIOTH_EXAMPLE_COAP_PSK),
+                    }}};
+    golioth_client_t client = golioth_client_create(&config);
     assert(client);
     golioth_client_register_event_callback(client, on_client_event, NULL);
 
