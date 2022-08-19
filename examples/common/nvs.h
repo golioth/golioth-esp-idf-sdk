@@ -5,6 +5,9 @@
  */
 #pragma once
 
+#include <stdlib.h>
+#include <stdbool.h>
+
 // Namespace to use for NVS keys. Can be anything.
 #define NVS_NAMESPACE "example"
 

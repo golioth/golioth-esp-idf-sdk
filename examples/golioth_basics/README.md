@@ -8,8 +8,9 @@ behavior.
 ## Adding credentials
 
 After building and flashing this app, you will need to add WiFi and Golioth
-credentials using the device shell. Here is the command syntax to use in a
-terminal:
+credentials using the device shell or BLE.
+
+### Shell Credentials
 
 ```console
 settings set wifi/ssid "YourWiFiAccessPointName"
@@ -19,3 +20,9 @@ settings set golioth/psk "YourGoliothDevicePSK"
 ```
 
 Type `reset` to restart the app with the new credentials.
+
+### BLE Credentials
+
+Use the web app to provision:
+
+https://github.com/goliothlabs/ble_prov_web
