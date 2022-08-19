@@ -10,6 +10,9 @@
 #include "nvs.h"
 #include "shell.h"
 #include "wifi.h"
+#if CONFIG_GOLIOTH_BLE_SERVICE_ENABLED
+#include "ble.h"
+#endif
 #include "golioth.h"
 
 #define TAG "golioth_example"
@@ -116,6 +119,11 @@ void app_main(void) {
     // Initialize NVS first. For this example, it is assumed that WiFi and Golioth
     // PSK credentials are stored in NVS.
     nvs_init();
+
+#if CONFIG_GOLIOTH_BLE_SERVICE_ENABLED
+    // Initialize BLE stack, which can be used for provisioning WiFi and Golioth credentials
+    ble_init("golioth_esp32");
+#endif
 
     // Create a background shell/CLI task (type "help" to see a list of supported commands)
     shell_start();
