@@ -11,6 +11,17 @@
 
 /// @defgroup golioth_client golioth_client
 /// Functions for creating a Golioth client and managing client lifetime.
+///
+/// Used to connect to Golioth cloud using the CoAP protocol over DTLS.
+///
+/// For authentication, you can use either pre-shared key (PSK) or
+/// X.509 certificates (aka Public Key Infrastructure, PKI).
+///
+/// https://docs.golioth.io/reference/protocols/coap
+/// <br>
+/// https://docs.golioth.io/reference/protocols/coap/auth
+/// <br>
+/// https://docs.golioth.io/reference/protocols/device-auth
 /// @{
 
 /// @brief Opaque handle to the Golioth client
