@@ -9,6 +9,8 @@
 
 /// @defgroup golioth_fw_update golioth_fw_update
 /// Create a background task that will execute Over-the-Air (OTA) updates
+///
+/// https://docs.golioth.io/reference/protocols/coap/ota
 /// @{
 
 /// Create a task that will perform firmware updates.

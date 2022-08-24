@@ -10,6 +10,10 @@
 
 /// @defgroup golioth_lightdb golioth_lightdb
 /// Functions for interacting with Golioth LightDB state and LightDB stream services.
+///
+/// https://docs.golioth.io/reference/protocols/coap/lightdb
+/// <br>
+/// https://docs.golioth.io/reference/protocols/coap/lightdb-stream
 /// @{
 
 /// Convert raw byte payload into an int32_t

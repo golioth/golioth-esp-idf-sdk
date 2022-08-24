@@ -7,7 +7,49 @@ This repo contains a runtime library and set of examples intended to build
 and run in the latest release of esp-idf
 (currently [4.4.1](https://github.com/espressif/esp-idf/releases/tag/v4.4.1)).
 
-## Cloning this repo
+SDK source: https://github.com/golioth/golioth-esp-idf-sdk
+
+API documentation: https://esp-idf-sdk-docs.golioth.io/
+
+## Getting Started
+
+### Hello, Golioth!
+
+Here is a minimal example that demonstrates how to connect to
+[Golioth cloud](https://docs.golioth.io/cloud) and send the message "Hello, Golioth!":
+
+```c
+#include "wifi.h"
+#include "golioth.h"
+
+void app_main(void) {
+    const char* wifi_ssid = "SSID";
+    const char* wifi_password = "Password";
+    const char* golioth_psk_id = "device@project";
+    const char* golioth_psk = "supersecret";
+
+    wifi_init(wifi_ssid, wifi_password);
+    wifi_wait_for_connected();
+
+    golioth_client_config_t config = {
+        .credentials = {
+            .auth_type = GOLIOTH_TLS_AUTH_TYPE_PSK,
+            .psk = {
+                    .psk_id = golioth_psk_id,
+                    .psk_id_len = strlen(golioth_psk_id),
+                    .psk = golioth_psk,
+                    .psk_len = strlen(golioth_psk),
+            }
+        }
+    };
+
+    golioth_client_t client = golioth_client_create(&config);
+    golioth_log_info_sync(client, "app_main", "Hello, Golioth!", 5.0);
+}
+
+```
+
+### Cloning this repo
 
 This repo uses git submodules, so you will need to clone with the `--recursive` option:
 
@@ -23,7 +65,7 @@ cd golioth-esp-idf-sdk
 git submodule update --init --recursive
 ```
 
-## Install esp-idf
+### Install esp-idf
 
 Install version 4.4.1 of esp-idf using the
 [installation directions from Espressif](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/get-started/index.html#installation).
@@ -42,12 +84,16 @@ git submodule update --init --recursive
 ./install.sh all
 ```
 
-## Trying the Golioth SDK examples
+### Trying the SDK examples
 
 The `examples` directory contains example apps which you can build and run.
 
 The `golioth_basics` example is recommended as a starting point, to learn how to
-connect to Golioth and use services like LightDB state, LightDB stream, Logging, and OTA.
+connect to Golioth and use services like
+[LightDB state](https://docs.golioth.io/cloud/services/lightdb),
+[LightDB stream](https://docs.golioth.io/cloud/services/lightdb-stream),
+[Logging](https://docs.golioth.io/cloud/services/logging),
+and [OTA](https://docs.golioth.io/cloud/services/ota).
 
 ### Using VSCode esp-idf extension
 
@@ -71,7 +117,7 @@ idf.py flash
 idf.py monitor
 ```
 
-## Integrating the Golioth SDK
+## Integrating the SDK
 
 The recommended way to integrate this SDK into an external application is to add it as a
 git submodule. For example:
@@ -112,7 +158,7 @@ A complete example of using the Golioth SDK in an external project can be found 
 
 https://github.com/golioth/golioth-esp-idf-external-app.git
 
-## Device Matrix
+## Verified Devices
 
 The following table lists the different hardware configurations we test the SDK against,
 and when it was last tested.

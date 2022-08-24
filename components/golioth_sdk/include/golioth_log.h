@@ -10,6 +10,8 @@
 
 /// @defgroup golioth_log golioth_log
 /// Functions for logging messages to Golioth
+///
+/// https://docs.golioth.io/reference/protocols/coap/logging
 /// @{
 
 /// Log an error to Golioth asynchronously

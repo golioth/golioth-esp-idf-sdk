@@ -4,3 +4,4 @@ sdkconfig.old
 build.tar.gz
 credentials.yml
 .vscode
+firebase-debug.log

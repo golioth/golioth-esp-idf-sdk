@@ -11,6 +11,8 @@
 
 /// @defgroup golioth_ota golioth_ota
 /// Functions for interacting with Golioth OTA services
+///
+/// https://docs.golioth.io/reference/protocols/coap/ota
 /// @{
 
 /// Maximum size of an OTA block, in bytes
