@@ -186,5 +186,5 @@ being manually tested with the same procedure).
 | Board              | Module           | esp-idf version | Last Tested Commit    |
 | ---                | ---              | ---             | ---                   |
 | ESP32-S3-DevKitC-1 | ESP32-S3-WROOM-1 | v4.4.1          | Every commit, CI/CD   |
-| ESP32-DevKitC-32E  | ESP32-WROOM-32E  | v4.4.1          | 56944d3 (Aug 2, 2022) |
-| ESP32-C3-DevKitM-1 | ESP32-C3-MINI-1  | v4.4.1          | 56944d3 (Aug 2, 2022) |
+| ESP32-DevKitC-32E  | ESP32-WROOM-32E  | v4.4.1          | v0.2.0 (Aug 26, 2022) |
+| ESP32-C3-DevKitM-1 | ESP32-C3-MINI-1  | v4.4.1          | v0.2.0 (Aug 26, 2022) |
