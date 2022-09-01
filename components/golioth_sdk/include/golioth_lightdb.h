@@ -9,7 +9,7 @@
 #include "golioth_client.h"
 
 /// @defgroup golioth_lightdb golioth_lightdb
-/// Functions for interacting with Golioth LightDB state and LightDB stream services.
+/// Functions for interacting with Golioth LightDB state and LightDB Stream services.
 ///
 /// https://docs.golioth.io/reference/protocols/coap/lightdb
 /// <br>
@@ -357,7 +357,7 @@ golioth_status_t golioth_lightdb_observe_async(
 // LightDB Stream
 //-------------------------------------------------------------------------------
 
-/// Similar to @ref golioth_lightdb_set_int_async, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_int_async, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_int_async(
         golioth_client_t client,
         const char* path,
@@ -365,14 +365,14 @@ golioth_status_t golioth_lightdb_stream_set_int_async(
         golioth_set_cb_fn callback,
         void* callback_arg);
 
-/// Similar to @ref golioth_lightdb_set_int_sync, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_int_sync, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_int_sync(
         golioth_client_t client,
         const char* path,
         int32_t value,
         int32_t timeout_s);
 
-/// Similar to @ref golioth_lightdb_set_bool_async, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_bool_async, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_bool_async(
         golioth_client_t client,
         const char* path,
@@ -380,14 +380,14 @@ golioth_status_t golioth_lightdb_stream_set_bool_async(
         golioth_set_cb_fn callback,
         void* callback_arg);
 
-/// Similar to @ref golioth_lightdb_set_bool_sync, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_bool_sync, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_bool_sync(
         golioth_client_t client,
         const char* path,
         bool value,
         int32_t timeout_s);
 
-/// Similar to @ref golioth_lightdb_set_float_async, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_float_async, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_float_async(
         golioth_client_t client,
         const char* path,
@@ -395,14 +395,14 @@ golioth_status_t golioth_lightdb_stream_set_float_async(
         golioth_set_cb_fn callback,
         void* callback_arg);
 
-/// Similar to @ref golioth_lightdb_set_float_sync, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_float_sync, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_float_sync(
         golioth_client_t client,
         const char* path,
         float value,
         int32_t timeout_s);
 
-/// Similar to @ref golioth_lightdb_set_string_async, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_string_async, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_string_async(
         golioth_client_t client,
         const char* path,
@@ -411,7 +411,7 @@ golioth_status_t golioth_lightdb_stream_set_string_async(
         golioth_set_cb_fn callback,
         void* callback_arg);
 
-/// Similar to @ref golioth_lightdb_set_string_sync, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_string_sync, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_string_sync(
         golioth_client_t client,
         const char* path,
@@ -419,7 +419,7 @@ golioth_status_t golioth_lightdb_stream_set_string_sync(
         size_t str_len,
         int32_t timeout_s);
 
-/// Similar to @ref golioth_lightdb_set_json_async, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_json_async, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_json_async(
         golioth_client_t client,
         const char* path,
@@ -428,7 +428,7 @@ golioth_status_t golioth_lightdb_stream_set_json_async(
         golioth_set_cb_fn callback,
         void* callback_arg);
 
-/// Similar to @ref golioth_lightdb_set_json_sync, but for LightDB stream
+/// Similar to @ref golioth_lightdb_set_json_sync, but for LightDB Stream
 golioth_status_t golioth_lightdb_stream_set_json_sync(
         golioth_client_t client,
         const char* path,

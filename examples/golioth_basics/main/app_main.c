@@ -179,7 +179,7 @@ void app_main(void) {
     //      Logging
     //      Over-the-Air (OTA) firmware updates
     //      LightDB state
-    //      LightDB stream
+    //      LightDB Stream
 
     // We'll start by logging a message to Golioth.
     //
@@ -252,7 +252,7 @@ void app_main(void) {
     // Once set, the on_my_config callback function should be called here.
     golioth_lightdb_observe_async(client, "desired/my_config", on_my_config, NULL);
 
-    // LightDB stream functions are nearly identical to LightDB state.
+    // LightDB Stream functions are nearly identical to LightDB state.
     golioth_lightdb_stream_set_int_async(client, "my_stream_int", 15, NULL, NULL);
 
     // We can register Remote Procedure Call (RPC) methods. RPCs allow

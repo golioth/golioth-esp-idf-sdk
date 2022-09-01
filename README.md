@@ -91,7 +91,7 @@ The `examples` directory contains example apps which you can build and run.
 The `golioth_basics` example is recommended as a starting point, to learn how to
 connect to Golioth and use services like
 [LightDB state](https://docs.golioth.io/cloud/services/lightdb),
-[LightDB stream](https://docs.golioth.io/cloud/services/lightdb-stream),
+[LightDB Stream](https://docs.golioth.io/cloud/services/lightdb-stream),
 [Logging](https://docs.golioth.io/cloud/services/logging),
 and [OTA](https://docs.golioth.io/cloud/services/ota).
 
