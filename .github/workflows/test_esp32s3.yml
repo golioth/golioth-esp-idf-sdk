@@ -68,11 +68,33 @@ jobs:
         goliothctl dfu artifact create build/test.bin --version 1.2.99
         goliothctl dfu release create --release-tags 1.2.99 --components main@1.2.99 --rollout true
 
+  # Assumptions made about the self-hosted runner:
+  #
+  #  1. Has installed the GitHub Actions self-hosted runner service
+  #  2. Has an environment variable defined for the serial port: CI_ESP32S3_PORT
+  #  3. Has credentials defined in the file $HOME/credentials_esp32s3.yml
+  #
+  # It is the responsibility of the self-hosted runner admin to ensure
+  # these pre-conditions are met.
+  #
+  # For item 1, GitHub provides instructions when you add a new self-hosted runner
+  # in Settings -> Actions -> Runners.
+  #
+  # For item 2, this environment variable can be added to $HOME/runner_env.sh:
+  #   export CI_ESP32S3_PORT=/dev/ttyUSB0
+  #
+  # For item 3, the file needs to have contents like:
+  #
+  # {
+  #   "wifi/ssid": "mywifissid",
+  #   "wifi/psk": "mywifipassword",
+  #   "golioth/psk-id": "device@project",
+  #   "golioth/psk": "supersecret"
+  # }
   hw_flash_and_test:
     needs: build_for_hw_test
     runs-on: [self-hosted, has_esp32s3]
-    # The 'if' will prevent running this job if from a fork pull request
-    if: ${{ github.event.pull_request.head.repo.full_name == github.event.pull_request.base.repo.full_name }}
+
     steps:
     - name: Checkout repository without submodules
       uses: actions/checkout@v2
@@ -87,12 +109,11 @@ jobs:
         tar xvf build.tar.gz
     - name: Install esptool
       run: pip install esptool
-    # Assume the self-hosted runner has a $HOME/credentials.yml file
-    # that sets the local WiFi ssid/password and Golioth psk-id/psk.
-    - name: Copy credentials.yml to examples/test
+    - name: Copy credentials_esp32s3.yml to examples/test
       run: |
-        cp $HOME/credentials.yml examples/test
+        cp $HOME/credentials_esp32s3.yml examples/test/credentials.yml
     - name: Flash and Verify Serial Output
       run: |
         cd examples/test
-        python flash.py $CI_ESP32_PORT && python verify.py $CI_ESP32_PORT
+        source $HOME/runner_env.sh
+        python flash.py $CI_ESP32S3_PORT && python verify.py $CI_ESP32S3_PORT
