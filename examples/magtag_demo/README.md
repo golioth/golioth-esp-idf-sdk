@@ -51,7 +51,7 @@ the board into the new firmware.
 You can use the ESP-IDF monitor feature to see the serial output of the MagTag.
 
 ```sh
-idp.py -p /dev/ttyACM0 -b monitor
+idp.py -p /dev/ttyACM0 monitor
 ```
 
 Exit the monitor by typing `CTRL-]`.
