@@ -253,14 +253,17 @@ void app_main(void) {
 
     set_all_leds(BLUE);
 
+    const char* psk_id = nvs_read_golioth_psk_id();
+    const char* psk = nvs_read_golioth_psk();
+
     golioth_client_config_t config = {
             .credentials = {
                     .auth_type = GOLIOTH_TLS_AUTH_TYPE_PSK,
                     .psk = {
-                            .psk_id = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID,
-                            .psk_id_len = strlen(CONFIG_GOLIOTH_EXAMPLE_COAP_PSK_ID),
-                            .psk = CONFIG_GOLIOTH_EXAMPLE_COAP_PSK,
-                            .psk_len = strlen(CONFIG_GOLIOTH_EXAMPLE_COAP_PSK),
+                            .psk_id = psk_id,
+                            .psk_id_len = strlen(psk_id),
+                            .psk = psk,
+                            .psk_len = strlen(psk),
                     }}};
     golioth_client_t client = golioth_client_create(&config);
     assert(client);
